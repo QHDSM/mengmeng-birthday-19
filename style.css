@@ -34,3 +34,47 @@
 /* Independent moving subjects within the cake world's new valley. */
 .world-planet{position:absolute;z-index:1;left:6%;top:14%;width:clamp(100px,17vw,230px);aspect-ratio:1;animation:worldFloat 9s ease-in-out infinite alternate;filter:drop-shadow(0 0 32px #91b6ef55)}.world-planet-sphere{position:absolute;inset:12%;overflow:hidden;border-radius:50%;background:radial-gradient(circle at 31% 24%,#eee5ff 0%,#bbafd8 18%,#727dc0 43%,#303a77 72%,#121b46 100%);box-shadow:inset -18px -14px 30px #06133299,inset 8px 7px 22px #fff4;animation:planetGlow 6s ease-in-out infinite alternate}.world-planet-sphere:after{content:"";position:absolute;inset:-25%;opacity:.37;background:repeating-linear-gradient(164deg,transparent 0 13px,#ead5ed77 16px 21px,transparent 27px 38px);animation:planetBands 18s linear infinite}.world-planet-ring{position:absolute;inset:24% -10%;border:clamp(3px,.4vw,6px) solid #c5cef5a6;border-left-color:#e4d8ffa8;border-bottom-color:#91a7de99;border-radius:50%;transform:rotate(-25deg);box-shadow:0 0 12px #bfcaff55,inset 0 0 10px #c8c1ff55}.world-moon-orbit{position:absolute;inset:-8%;animation:moonRevolve 14s linear infinite}.world-moon-orbit i{position:absolute;top:44%;right:-2%;width:clamp(9px,1.2vw,17px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 30% 30%,#f8f3ff,#91b9e9 50%,#465489);box-shadow:0 0 12px #a9d9ff}.world-foliage{position:absolute;z-index:1;bottom:-6%;width:clamp(140px,23vw,320px);transform-origin:50% 100%;animation:foliageSway 5.5s ease-in-out infinite alternate;opacity:.88;filter:drop-shadow(0 0 14px #a7a4e74d)}.world-foliage img{width:100%;height:auto;display:block}.world-foliage-left{left:-3%}.world-foliage-right{right:-3%;width:clamp(120px,19vw,270px);animation-duration:7s;animation-delay:-2.6s}.world-foliage-right img{transform:scaleX(-1)}@keyframes worldFloat{0%{transform:translate(0,0) rotate(-4deg)}100%{transform:translate(36px,-18px) rotate(5deg)}}@keyframes planetGlow{to{filter:brightness(1.18)}}@keyframes planetBands{to{transform:translateX(17%) rotate(12deg)}}@keyframes moonRevolve{to{transform:rotate(360deg)}}@keyframes foliageSway{from{transform:rotate(-4deg)}to{transform:rotate(5deg)}}@media(max-width:700px){.world-planet{left:1%;top:19%;width:clamp(78px,23vw,130px)}.world-foliage{width:clamp(92px,27vw,160px);bottom:-2%}.world-foliage-right{width:clamp(85px,23vw,145px)}}@media(prefers-reduced-motion:reduce){.world-planet,.world-planet-sphere,.world-planet-sphere:after,.world-moon-orbit,.world-foliage{animation:none!important}}
 .cake-scene .cake-focus{position:absolute;z-index:0;inset:0;pointer-events:none;background:radial-gradient(ellipse 66% 58% at 50% 50%,#020613e8 0%,#020613c8 38%,#02061370 66%,#02061300 100%)}
+
+/* ===== v3 typography breathing room ===== */
+.hero h1,.display{line-height:1.03;letter-spacing:.005em}
+.hero h1{font-size:clamp(56px,8.1vw,124px);margin:18px 0 16px}
+.hero h2{font-size:clamp(26px,3vw,44px);line-height:1.2}
+.story-heading .display{font-size:clamp(46px,5.6vw,84px);line-height:1.06}
+.story-heading .script{display:inline-block;margin:8px 0 0 64px}
+.wish-head .display{font-size:clamp(40px,5vw,78px);line-height:1.07}
+.wish-head .display .script{font-size:.8em;margin:0 .16em;vertical-align:baseline}
+.finale .final-content h2{line-height:1.32}
+@media(max-width:700px){
+.hero h1{font-size:clamp(44px,11vw,64px);line-height:1.05;margin:12px 0 10px}
+.hero h2{font-size:clamp(22px,6vw,32px)}
+.story-heading .display{font-size:clamp(38px,10vw,54px)}
+.story-heading .script{margin-left:40px}
+.wish-head .display{font-size:clamp(32px,8.6vw,44px)}
+.finale .final-content h2{line-height:1.34}
+}
+/* ===== v3 cake scene: video backdrop, side copy, no glass dome ===== */
+.cake-scene .cake-background-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;filter:blur(1.2px) brightness(.82) saturate(1);transform:scale(1.04)}
+.cake-scene .cake-background-shade{background:linear-gradient(90deg,#03071cee 0%,#03071cbb 24%,#03071c55 46%,#03071caa 74%,#03071cee 100%),linear-gradient(180deg,#03071cc4 0%,#03071c33 30%,#03071c22 66%,#03071ce0 100%)}
+.cake-scene .cake-focus{background:radial-gradient(ellipse 44% 50% at 50% 54%,#020614b8 0%,#02061466 58%,#02061400 100%)}
+.cake-scene .cake-heading{left:4.5%;right:auto;top:50%;transform:translateY(-50%);width:24%;text-align:left;background:none}
+.cake-scene .cake-heading .eyebrow{font-size:11px}
+.cake-scene .cake-heading h2{font-size:clamp(24px,2.4vw,38px);line-height:1.25;margin:14px 0 12px;letter-spacing:.02em}
+.cake-scene .cake-heading h2 span{color:#c1ff39;font-size:.8em}
+.cake-scene .cake-heading p{font-size:13px;line-height:1.9;color:#dbe7fa;margin:0}
+.cake-scene .cake-side-note{position:absolute;z-index:4;right:4.5%;top:56%;transform:translateY(-50%);width:21%;text-align:right}
+.cake-side-note .cake-plaque{position:static;transform:none;left:auto;bottom:auto;display:inline-block;white-space:normal;padding:9px 16px;border-radius:30px;border:1px solid #9fc0ff77;background:#071531d9;color:#eaf2ff;font-size:13px;letter-spacing:.06em;box-shadow:0 0 28px #6f92e02e}
+.cake-side-note .cake-tip{margin:14px 0 0;font-size:12px;letter-spacing:.08em;color:#9db3d6}
+.cake-scene #cake-result{top:56%;right:4.5%;left:auto;bottom:auto;transform:translateY(-50%);width:21%;font-size:14px;line-height:1.9;text-align:right;color:#fff3cc}
+.cake-scene .custom{top:auto;bottom:120px;right:4%}
+.cake-toolbar{left:5%;right:5%;bottom:max(64px,8%)}
+@media(max-width:700px){
+.cake-scene .cake-heading{left:6%;right:6%;top:9%;transform:none;width:auto;text-align:center}
+.cake-scene .cake-heading h2{font-size:clamp(20px,5.6vw,26px);margin:8px 0 6px}
+.cake-scene .cake-heading p{font-size:12px}
+.cake-scene .cake-side-note{left:6%;right:6%;top:auto;bottom:118px;transform:none;width:auto;text-align:center}
+.cake-side-note .cake-tip{display:none}
+.cake-side-note .cake-plaque{padding:7px 13px;font-size:11px}
+.cake-scene #cake-result{left:6%;right:6%;top:auto;bottom:160px;transform:none;width:auto;text-align:center;font-size:12px}
+.cake-scene .custom{top:10%;right:5%;bottom:auto;width:210px}
+.cake-toolbar{bottom:max(58px,7%)}
+}
