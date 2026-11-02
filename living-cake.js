@@ -52,7 +52,7 @@ export function createLivingCake(scene,camera,cakeGroup,cakeMat) {
     const tip=new THREE.Object3D();tip.position.y=1.22;tube.add(tip);const flash=new THREE.PointLight(0xffd38a,0,3);flash.position.y=1.3;tube.add(flash);mount.visible=false;cannons.push({mount,tube,tip,flash,side});
   }
   let started=0,fired=0;
-  function layout(progress=1){const dist=7,half=Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*dist;camera.updateMatrixWorld();const bottom=new THREE.Vector3(0,.15,2).project(camera).y*half;for(const c of cannons){c.mount.position.set(c.side*half*camera.aspect*.9,bottom+.24,-dist);c.mount.scale.setScalar(.72*progress);}}
+  function layout(progress=1){const dist=7,half=Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*dist;for(const c of cannons){const travel=1-progress;c.mount.position.set(c.side*(half*camera.aspect*.98+travel*.5),-half+.08-travel*.5,-dist);c.mount.scale.setScalar(.9);}}
   return {animals,cannons,
     start(now){started=now;fired=0;for(const c of cannons)c.mount.visible=true;},
     reset(){started=0;fired=0;cannons.forEach(c=>c.mount.visible=false);},
