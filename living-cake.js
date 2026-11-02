@@ -1,14 +1,18 @@
-import { softenMaterial } from './surface-materials.js?v=20261102-8';
+import { softenMaterial } from './surface-materials.js?v=20261102-9';
 import * as THREE from './three.module.js';
 
 // Sculpted bodies and articulated fins: no billboard fish are used here.
 export function createKun(color = 0x9feaff, size = 1) {
   const root = new THREE.Group(); root.name = 'animated-kun'; root.scale.setScalar(size);
-  const skin = new THREE.MeshPhysicalMaterial({color, metalness:.25, roughness:.28, clearcoat:1, emissive:color, emissiveIntensity:.4});
-  softenMaterial(skin,'scales',.045);
+  const skin = new THREE.MeshPhysicalMaterial({color, metalness:.05, roughness:.65, clearcoat:.18, emissive:color, emissiveIntensity:.4});
+  softenMaterial(skin,'scales',.13);
   const belly = new THREE.MeshStandardMaterial({color:0xe5faff, roughness:.4, emissive:0x76bfff, emissiveIntensity:.3});
   const bodyGeo = new THREE.SphereGeometry(1,32,20); bodyGeo.scale(.75,.29,.32);
   const body = new THREE.Mesh(bodyGeo,skin); root.add(body);
+  // Raised pearlescent markings give the creature visible surface detail at normal viewing size.
+  const spotMat=new THREE.MeshStandardMaterial({color:0xc7efff,roughness:.62,emissive:0x175885,emissiveIntensity:.18});
+  const spots=new THREE.InstancedMesh(new THREE.SphereGeometry(.018,8,6),spotMat,96),matrix=new THREE.Matrix4(),pos=new THREE.Vector3(),quat=new THREE.Quaternion(),scale=new THREE.Vector3(1.1,.65,.48);let spotIndex=0;
+  for(let row=0;row<4;row++)for(let col=0;col<12;col++){const x=-.52+col*.09,y=-.06+row*.085,section=Math.max(.05,1-(x*x)/(.75*.75)-(y*y)/(.29*.29)),z=.322*Math.sqrt(section);for(const side of [-1,1]){pos.set(x,y,side*z);matrix.compose(pos,quat,scale);spots.setMatrixAt(spotIndex++,matrix);}}spots.instanceMatrix.needsUpdate=true;body.add(spots);
   const original = bodyGeo.attributes.position.array.slice();
   const underside = new THREE.Mesh(new THREE.SphereGeometry(1,24,12),belly); underside.scale.set(.57,.11,.27); underside.position.set(.08,-.19,0); root.add(underside);
   function fin(points, x,y,z, mat=skin) {

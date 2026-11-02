@@ -1,4 +1,4 @@
-import { softenMaterial } from './surface-materials.js?v=20261102-8';
+import { softenMaterial } from './surface-materials.js?v=20261102-9';
 import * as THREE from './three.module.js';
 export function decorateCake(cake) {
  const white=new THREE.MeshStandardMaterial({color:0xfff6fb,roughness:.36}), pink=new THREE.MeshPhysicalMaterial({color:0xff6b9e,roughness:.3,clearcoat:1}), dark=new THREE.MeshStandardMaterial({color:0x201630,roughness:.4}), gold=new THREE.MeshStandardMaterial({color:0xffcb55,metalness:.45,roughness:.26}), yellow=new THREE.MeshStandardMaterial({color:0xffd35a,roughness:.4});
