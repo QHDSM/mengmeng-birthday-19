@@ -93,20 +93,8 @@ header .counter{margin-left:auto}
 }
 
 /* A quiet alien landscape for the wish scene. */
-.cake-scene .cake-wish-background{position:absolute;inset:-3%;z-index:0;pointer-events:none;background:#050c25 url("cake-animated-landscape.png") center center/cover no-repeat;animation:cakeLakeDrift 30s ease-in-out infinite alternate}
+.cake-scene .cake-wish-background{position:absolute;inset:-3%;z-index:0;pointer-events:none;background:#050c25 url("cake-soft-planet-v2.png") center center/cover no-repeat;animation:none}
 .cake-scene .cake-background-shade{background:linear-gradient(90deg,#03071cb8 0%,#03071c65 26%,#03071c18 50%,#03071c70 76%,#03071cbd 100%),linear-gradient(180deg,#03071c8c 0%,transparent 35%,#03071c22 70%,#03071cb8 100%)}
 @keyframes cakeLakeDrift{from{transform:scale(1)}to{transform:scale(1.045)}}
 @media(max-width:700px){.cake-scene .cake-wish-background{background-position:52% center}.cake-scene .cake-background-shade{background:linear-gradient(180deg,#03071cb8 0%,#03071c40 35%,#03071c22 60%,#03071cc9 100%)}}
 @media(prefers-reduced-motion:reduce){.cake-scene .cake-wish-background{animation:none}}
-
-/* Living light and a little astronaut in the cake scene. */
-.cake-scene .cake-wish-background{animation:cakeLandscapeBreath 14s ease-in-out infinite alternate}
-.cake-scene .cake-sky-lights{position:absolute;inset:0;z-index:1;pointer-events:none;background-image:radial-gradient(circle,#dff4ff 0 1.5px,transparent 4px),radial-gradient(circle,#ffd4ef 0 1px,transparent 4px),radial-gradient(circle,#c6ddff 0 1.5px,transparent 5px);background-size:233px 189px,317px 257px,419px 317px;background-position:30px 24px,120px 80px,70px 130px;opacity:.55;animation:cakeSkyGlow 4s ease-in-out infinite alternate}
-.cake-scene .cake-astronaut{position:absolute;z-index:2;left:5%;bottom:9%;width:clamp(75px,10vw,145px);height:auto;pointer-events:none;filter:brightness(.8) drop-shadow(0 7px 9px #020b24aa);transform-origin:50% 90%;animation:cakeAstronautIdle 3.5s ease-in-out infinite}
-.cake-scene.is-celebrating .cake-astronaut{animation:cakeAstronautCheer .75s cubic-bezier(.25,.7,.3,1) 8}
-@keyframes cakeLandscapeBreath{from{transform:scale(1.02) translate3d(-.5%,0,0)}to{transform:scale(1.08) translate3d(.5%,-.5%,0)}}
-@keyframes cakeSkyGlow{from{opacity:.22;transform:translateY(4px)}to{opacity:.8;transform:translateY(-8px)}}
-@keyframes cakeAstronautIdle{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-5px) rotate(2deg)}}
-@keyframes cakeAstronautCheer{0%,100%{transform:translateY(0) scale(1.08,.92) rotate(-5deg)}45%{transform:translateY(-42px) scale(.95,1.05) rotate(8deg)}70%{transform:translateY(-18px) rotate(-6deg)}}
-@media(max-width:700px){.cake-scene .cake-astronaut{left:3%;bottom:17%;width:clamp(65px,19vw,100px)}}
-@media(prefers-reduced-motion:reduce){.cake-scene .cake-wish-background,.cake-scene .cake-sky-lights,.cake-scene .cake-astronaut,.cake-scene.is-celebrating .cake-astronaut{animation:none}}

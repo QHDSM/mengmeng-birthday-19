@@ -4,11 +4,19 @@ export function decorateCake(cake) {
  const white=new THREE.MeshStandardMaterial({color:0xfff6fb,roughness:.36}), pink=new THREE.MeshPhysicalMaterial({color:0xff6b9e,roughness:.3,clearcoat:1}), dark=new THREE.MeshStandardMaterial({color:0x201630,roughness:.4}), gold=new THREE.MeshStandardMaterial({color:0xffcb55,metalness:.45,roughness:.26}), yellow=new THREE.MeshStandardMaterial({color:0xffd35a,roughness:.4});
  softenMaterial(white,'grain',.024);softenMaterial(pink,'grain',.018);
  function ball(parent,mat,x,y,z,sx,sy,sz){const o=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),mat);o.position.set(x,y,z);o.scale.set(sx,sy,sz);parent.add(o);return o}
- function kitty(a,y){const g=new THREE.Group();g.position.set(Math.sin(a)*2.02,y,Math.cos(a)*2.02);g.rotation.y=a;cake.add(g);
- ball(g,white,0,0,0,.28,.23,.15);
- for(const side of [-1,1]){const ear=ball(g,white,side*.19,.19,-.005,.105,.14,.09);ear.rotation.z=-side*.38;ball(g,dark,side*.105,.005,.143,.022,.035,.018);
- for(let j=0;j<3;j++){const bar=new THREE.Mesh(new THREE.CapsuleGeometry(.006,.15,3,6),dark);bar.rotation.z=Math.PI/2+side*(j-1)*.17;bar.position.set(side*.235,-.055+(j-1)*.035,.13);g.add(bar)}}
- ball(g,yellow,0,-.05,.154,.032,.022,.015);for(const side of [-1,1]){const b=ball(g,pink,.18+side*.062,.17,.135,.075,.045,.035);b.rotation.z=side*.55}ball(g,pink,.18,.17,.17,.033,.035,.03);return g;}
+ function kitty(a,y){
+ const g=new THREE.Group();g.name='kitty-ornament';g.position.set(Math.sin(a)*2.02,y,Math.cos(a)*2.02);g.rotation.y=a;cake.add(g);
+ // A softly rounded, wider-than-tall confection with pointed ears.
+ ball(g,white,0,0,0,.30,.225,.12);
+ const earShape=new THREE.Shape();earShape.moveTo(-.095,0);earShape.quadraticCurveTo(-.09,.07,-.07,.17);earShape.quadraticCurveTo(-.05,.20,-.02,.18);earShape.lineTo(.09,.08);earShape.quadraticCurveTo(.11,.03,.09,0);earShape.closePath();
+ const earGeo=new THREE.ExtrudeGeometry(earShape,{depth:.10,bevelEnabled:true,bevelThickness:.025,bevelSize:.025,bevelSegments:3,curveSegments:8});
+ for(const side of [-1,1]){const ear=new THREE.Mesh(earGeo,white);ear.position.set(side*.19,.12,-.055);ear.scale.x=side;ear.rotation.z=-side*.12;g.add(ear);
+ ball(g,dark,side*.115,-.005,.116,.018,.031,.009);
+ for(let j=0;j<3;j++){const bar=new THREE.Mesh(new THREE.CapsuleGeometry(.0045,.105,3,6),dark);bar.rotation.z=Math.PI/2+side*(j-1)*.15;bar.position.set(side*.268,-.055+(j-1)*.034,.105);g.add(bar)}}
+ ball(g,yellow,0,-.052,.121,.027,.017,.01);
+ // Folded pink sugar bow, with distinct knot and two angled loops.
+ for(const side of [-1,1]){const loop=ball(g,pink,.19+side*.054,.16,.125,.067,.047,.022);loop.rotation.z=side*.42}
+ ball(g,pink,.19,.16,.15,.027,.03,.02);return g;}
  [0,2.094,4.188].forEach((a,i)=>kitty(a,.78+(i%2)*.72));
  // Piped buttercream rosettes: a single ridged, tapering mesh, with a subtle spiral twist.
  const creamColors=[0xfff4ed,0xffe9ed,0xf3eafb,0xfff1e4];
