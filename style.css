@@ -91,3 +91,10 @@ header .counter{margin-left:auto}
  .cake-scene .cake-heading h2{font-size:clamp(26px,6.5vw,34px);margin:8px 0}
  .cake-scene .cake-heading p:not(.eyebrow){font-size:15px;line-height:1.55}
 }
+
+/* A quiet alien landscape for the wish scene. */
+.cake-scene .cake-wish-background{position:absolute;inset:-3%;z-index:0;pointer-events:none;background:#050c25 url("cake-soft-planet-v2.png") center center/cover no-repeat;animation:cakeLakeDrift 30s ease-in-out infinite alternate}
+.cake-scene .cake-background-shade{background:linear-gradient(90deg,#03071cb8 0%,#03071c65 26%,#03071c18 50%,#03071c70 76%,#03071cbd 100%),linear-gradient(180deg,#03071c8c 0%,transparent 35%,#03071c22 70%,#03071cb8 100%)}
+@keyframes cakeLakeDrift{from{transform:scale(1)}to{transform:scale(1.045)}}
+@media(max-width:700px){.cake-scene .cake-wish-background{background-position:52% center}.cake-scene .cake-background-shade{background:linear-gradient(180deg,#03071cb8 0%,#03071c40 35%,#03071c22 60%,#03071cc9 100%)}}
+@media(prefers-reduced-motion:reduce){.cake-scene .cake-wish-background{animation:none}}
