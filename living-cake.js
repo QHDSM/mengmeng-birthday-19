@@ -29,9 +29,11 @@ export function createKun(color = 0x9feaff, size = 1) {
 
 export function createLivingCake(scene,camera,cakeGroup,cakeMat) {
   // Translucent galaxy glaze reveals real moving geometry below its surface.
-  cakeMat.transparent=true;cakeMat.opacity=.69;cakeMat.depthWrite=false;
+  cakeMat.transparent=true;cakeMat.opacity=.95;cakeMat.depthWrite=false;
+  cakeMat.color.set(0xd0ddff);cakeMat.envMapIntensity=.62;cakeMat.roughness=.28;
   const animals=[];
-  for(let i=0;i<15;i++) {const inside=i<5;const k=createKun([0x89e5ff,0xb6a0ff,0xffb4d8,0x77caff,0xffdfac][i%5],inside?.34+(i%2)*.12:.19+(i%3)*.10);k.userData.path={inside,phase:i*2.4,rad:inside?.9+(i%2)*.28:3.15+(i%3)*.6,y:inside?.55+(i%3)*.6:-.42+(i%6)*.88,speed:inside?.24:.13+(i%3)*.025};(inside?cakeGroup:scene).add(k);animals.push(k);}
+  for(let i=0;i<15;i++) {const inside=i<5;const k=createKun([0x89e5ff,0xb6a0ff,0xffb4d8,0x77caff,0xffdfac][i%5],inside?.34+(i%2)*.12:.19+(i%3)*.10);if(inside){k.traverse(o=>{if(o.isMesh&&o.material.emissive){o.material=o.material.clone();o.material.emissiveIntensity=3.2;}});}
+    k.userData.path={inside,phase:i*2.4,rad:inside?.9+(i%2)*.28:3.15+(i%3)*.6,y:inside?.55+(i%3)*.6:-.42+(i%6)*.88,speed:inside?.24:.13+(i%3)*.025};(inside?cakeGroup:scene).add(k);animals.push(k);}
   // Small light beads and stars occupy the lower hemisphere as well as the crown.
   const dustGeo=new THREE.BufferGeometry(),pts=[];for(let i=0;i<650;i++){const a=Math.random()*Math.PI*2,r=2.35+Math.random()*2.1;pts.push(Math.cos(a)*r,-.65+Math.random()*4.8,Math.sin(a)*r);}
   dustGeo.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));const dust=new THREE.Points(dustGeo,new THREE.PointsMaterial({color:0x99dcff,size:.024,transparent:true,opacity:.7,blending:THREE.AdditiveBlending,depthWrite:false}));scene.add(dust);
