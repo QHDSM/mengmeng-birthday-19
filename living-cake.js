@@ -33,11 +33,11 @@ export function createLivingCake(scene,camera,cakeGroup,cakeMat) {
   cakeMat.color.set(0x9ebaff);cakeMat.envMapIntensity=.45;cakeMat.roughness=.28;
   const animals=[];
   for(let i=0;i<15;i++) {const inside=i<5;const k=createKun([0x89e5ff,0xb6a0ff,0xffb4d8,0x77caff,0xffdfac][i%5],inside?.34+(i%2)*.12:.19+(i%3)*.10);if(inside){k.traverse(o=>{if(o.isMesh&&o.material.emissive){o.material=o.material.clone();o.material.emissiveIntensity=3.2;}});}
-    k.userData.path={inside,phase:i*2.4,rad:inside?.9+(i%2)*.28:3.15+(i%3)*.6,y:inside?.55+(i%3)*.6:-.42+(i%6)*.88,speed:inside?.24:.13+(i%3)*.025};(inside?cakeGroup:scene).add(k);animals.push(k);}
+    k.userData.path={inside,phase:i*2.4,rad:inside?.9+(i%2)*.28:3.15+(i%3)*.6,y:inside?.55+(i%3)*.6:.85+(i%6)*.72,speed:inside?.24:.13+(i%3)*.025};(inside?cakeGroup:scene).add(k);animals.push(k);}
   // Small light beads and stars occupy the lower hemisphere as well as the crown.
-  const dustGeo=new THREE.BufferGeometry(),pts=[];for(let i=0;i<650;i++){const a=Math.random()*Math.PI*2,r=2.35+Math.random()*2.1;pts.push(Math.cos(a)*r,-.65+Math.random()*4.8,Math.sin(a)*r);}
+  const dustGeo=new THREE.BufferGeometry(),pts=[];for(let i=0;i<650;i++){const a=Math.random()*Math.PI*2,r=2.35+Math.random()*2.1;pts.push(Math.cos(a)*r,.85+Math.random()*3.3,Math.sin(a)*r);}
   dustGeo.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));const dust=new THREE.Points(dustGeo,new THREE.PointsMaterial({color:0x99dcff,size:.024,transparent:true,opacity:.7,blending:THREE.AdditiveBlending,depthWrite:false}));scene.add(dust);
-  const stars=new THREE.Group();scene.add(stars);for(let i=0;i<48;i++){const a=i*2.399,r=2.7+(i%5)*.24;const s=new THREE.Mesh(new THREE.OctahedronGeometry(.025+(i%4)*.013),new THREE.MeshBasicMaterial({color:[0xffde7d,0x9beaff,0xe6a6ff][i%3]}));s.position.set(Math.cos(a)*r,-.55+(i%7)*.41,Math.sin(a)*r);stars.add(s);}
+  const stars=new THREE.Group();scene.add(stars);for(let i=0;i<48;i++){const a=i*2.399,r=2.7+(i%5)*.24;const s=new THREE.Mesh(new THREE.OctahedronGeometry(.025+(i%4)*.013),new THREE.MeshBasicMaterial({color:[0xffde7d,0x9beaff,0xe6a6ff][i%3]}));s.position.set(Math.cos(a)*r,.85+(i%7)*.34,Math.sin(a)*r);stars.add(s);}
   // Camera-mounted, genuinely three-dimensional party cannon tubes.
   scene.add(camera);const cannons=[];
   for(const side of [-1,1]) {const mount=new THREE.Group();camera.add(mount);const tube=new THREE.Group();tube.rotation.z=side*.52;mount.add(tube);
@@ -52,7 +52,7 @@ export function createLivingCake(scene,camera,cakeGroup,cakeMat) {
     const tip=new THREE.Object3D();tip.position.y=1.22;tube.add(tip);const flash=new THREE.PointLight(0xffd38a,0,3);flash.position.y=1.3;tube.add(flash);mount.visible=false;cannons.push({mount,tube,tip,flash,side});
   }
   let started=0,fired=0;
-  function layout(progress=1){const dist=7,half=Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*dist;for(const c of cannons){c.mount.position.set(c.side*half*camera.aspect*.9,-half-.6+(progress*1.05),-dist);}}
+  function layout(progress=1){const dist=7,half=Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*dist;camera.updateMatrixWorld();const bottom=new THREE.Vector3(0,.15,2).project(camera).y*half;for(const c of cannons){c.mount.position.set(c.side*half*camera.aspect*.9,bottom+.24,-dist);c.mount.scale.setScalar(.72*progress);}}
   return {animals,cannons,
     start(now){started=now;fired=0;for(const c of cannons)c.mount.visible=true;},
     reset(){started=0;fired=0;cannons.forEach(c=>c.mount.visible=false);},
