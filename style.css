@@ -98,3 +98,10 @@ header .counter{margin-left:auto}
 @keyframes cakeLakeDrift{from{transform:scale(1)}to{transform:scale(1.045)}}
 @media(max-width:700px){.cake-scene .cake-wish-background{background-position:52% center}.cake-scene .cake-background-shade{background:linear-gradient(180deg,#03071cb8 0%,#03071c40 35%,#03071c22 60%,#03071cc9 100%)}}
 @media(prefers-reduced-motion:reduce){.cake-scene .cake-wish-background{animation:none}}
+
+/* A single rendered scene contains the original astronaut and moving landscape. */
+.cake-scene .cake-scene-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;z-index:0;pointer-events:none}
+.cake-scene .cake-cheer-video{opacity:0;transition:opacity .2s ease}
+.cake-scene.is-cheering .cake-cheer-video{opacity:1}
+@media(max-width:700px){.cake-scene .cake-scene-video{object-position:10% center}}
+@media(prefers-reduced-motion:reduce){.cake-scene .cake-scene-video{display:block}.cake-scene .cake-cheer-video{display:none}}
