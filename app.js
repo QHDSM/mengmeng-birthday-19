@@ -1,5 +1,5 @@
 import * as THREE from './three.module.js';
-import { createLivingCake } from './living-cake.js?v=20261102-3';
+import { createLivingCake } from './living-cake.js?v=20261102-4';
 let livingCake;
 const $=s=>document.querySelector(s), scenes=[...document.querySelectorAll('.scene')];let current=0, collected=new Set(), selected=null, blown=false;
 function go(n){current=Math.max(0,Math.min(scenes.length-1,n));scenes.forEach((s,i)=>{s.classList.toggle('active',i===current);s.inert=i!==current});$('#counter').textContent=String(current+1).padStart(2,'0')+' / 05';$('#progress').style.width=((current+1)*20)+'%';$('#back').style.visibility=current?'visible':'hidden';if(current===3)resizeCake();syncSceneVideo();if(current!==4&&!finalSong.paused){finalSong.pause();finalSong.currentTime=0}}
