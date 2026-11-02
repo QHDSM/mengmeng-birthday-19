@@ -79,3 +79,15 @@
 .cake-toolbar{bottom:max(58px,7%)}
 }
 header .counter{margin-left:auto}
+
+/* Birthday cake heading: readable at the upper left on every screen. */
+.cake-scene .cake-heading{left:4%;right:auto;top:max(76px,12%);transform:none;width:min(34%,480px);text-align:left}
+.cake-scene .cake-heading .eyebrow{font-size:clamp(12px,.9vw,15px)}
+.cake-scene .cake-heading h2{font-size:clamp(31px,3.2vw,50px);line-height:1.25;margin:14px 0}
+.cake-scene .cake-heading p:not(.eyebrow){font-size:clamp(16px,1.1vw,19px);line-height:1.75}
+@media(max-width:700px){
+ .cake-scene .cake-heading{left:6%;right:auto;top:max(66px,9%);width:min(80%,340px);text-align:left}
+ .cake-scene .cake-heading .eyebrow{font-size:11px}
+ .cake-scene .cake-heading h2{font-size:clamp(26px,6.5vw,34px);margin:8px 0}
+ .cake-scene .cake-heading p:not(.eyebrow){font-size:15px;line-height:1.55}
+}
