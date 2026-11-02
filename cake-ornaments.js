@@ -1,6 +1,8 @@
+import { softenMaterial } from './surface-materials.js?v=20261102-8';
 import * as THREE from './three.module.js';
 export function decorateCake(cake) {
  const white=new THREE.MeshStandardMaterial({color:0xfff6fb,roughness:.36}), pink=new THREE.MeshPhysicalMaterial({color:0xff6b9e,roughness:.3,clearcoat:1}), dark=new THREE.MeshStandardMaterial({color:0x201630,roughness:.4}), gold=new THREE.MeshStandardMaterial({color:0xffcb55,metalness:.45,roughness:.26}), yellow=new THREE.MeshStandardMaterial({color:0xffd35a,roughness:.4});
+ softenMaterial(white,'grain',.024);softenMaterial(pink,'grain',.018);
  function ball(parent,mat,x,y,z,sx,sy,sz){const o=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),mat);o.position.set(x,y,z);o.scale.set(sx,sy,sz);parent.add(o);return o}
  function kitty(a,y){const g=new THREE.Group();g.position.set(Math.sin(a)*2.02,y,Math.cos(a)*2.02);g.rotation.y=a;cake.add(g);
  ball(g,white,0,0,0,.28,.23,.15);

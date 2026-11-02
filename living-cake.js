@@ -1,9 +1,11 @@
+import { softenMaterial } from './surface-materials.js?v=20261102-8';
 import * as THREE from './three.module.js';
 
 // Sculpted bodies and articulated fins: no billboard fish are used here.
 export function createKun(color = 0x9feaff, size = 1) {
   const root = new THREE.Group(); root.name = 'animated-kun'; root.scale.setScalar(size);
   const skin = new THREE.MeshPhysicalMaterial({color, metalness:.25, roughness:.28, clearcoat:1, emissive:color, emissiveIntensity:.4});
+  softenMaterial(skin,'scales',.045);
   const belly = new THREE.MeshStandardMaterial({color:0xe5faff, roughness:.4, emissive:0x76bfff, emissiveIntensity:.3});
   const bodyGeo = new THREE.SphereGeometry(1,32,20); bodyGeo.scale(.75,.29,.32);
   const body = new THREE.Mesh(bodyGeo,skin); root.add(body);
@@ -30,7 +32,7 @@ export function createKun(color = 0x9feaff, size = 1) {
 export function createLivingCake(scene,camera,cakeGroup,cakeMat) {
   // Translucent galaxy glaze reveals real moving geometry below its surface.
   cakeMat.transparent=true;cakeMat.opacity=.99;cakeMat.depthWrite=false;
-  cakeMat.color.set(0x9ebaff);cakeMat.envMapIntensity=.45;cakeMat.roughness=.28;
+  cakeMat.color.set(0x9ebaff);cakeMat.envMapIntensity=.45;cakeMat.roughness=.58;
   const animals=[];
   for(let i=0;i<15;i++) {const inside=i<5;const k=createKun([0x89e5ff,0xb6a0ff,0xffb4d8,0x77caff,0xffdfac][i%5],inside?.34+(i%2)*.12:.19+(i%3)*.10);if(inside){k.traverse(o=>{if(o.isMesh&&o.material.emissive){o.material=o.material.clone();o.material.emissiveIntensity=3.2;}});}
     k.userData.path={inside,phase:i*2.4,rad:inside?.9+(i%2)*.28:3.15+(i%3)*.6,y:inside?.55+(i%3)*.6:.85+(i%6)*.72,speed:inside?.24:.13+(i%3)*.025};(inside?cakeGroup:scene).add(k);animals.push(k);}
