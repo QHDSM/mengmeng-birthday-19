@@ -270,5 +270,5 @@ footer{padding-bottom:max(23px,env(safe-area-inset-bottom,0px));padding-left:max
   .hero-image .reference-video { object-position: center 73%; }
   .story-video { object-position: center 68%; }
   .cake-scene .cake-scene-video { object-position: center 60%; }
-  .finale-video { object-position: left 64%; }
+  .finale-video { object-position: left top; }
 }
