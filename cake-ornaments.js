@@ -1,6 +1,6 @@
 import { softenMaterial } from './surface-materials.js?v=20261102-10';
 import * as THREE from './three.module.js';
-export function decorateCake(cake) {
+export function decorateCake(cake, compact) {
  const white=new THREE.MeshStandardMaterial({color:0xfff6fb,roughness:.36}), pink=new THREE.MeshPhysicalMaterial({color:0xff6b9e,roughness:.3,clearcoat:1}), dark=new THREE.MeshStandardMaterial({color:0x201630,roughness:.4}), gold=new THREE.MeshStandardMaterial({color:0xffcb55,metalness:.45,roughness:.26}), yellow=new THREE.MeshStandardMaterial({color:0xffd35a,roughness:.4});
  softenMaterial(white,'grain',.024);softenMaterial(pink,'grain',.018);
  function ball(parent,mat,x,y,z,sx,sy,sz){const o=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),mat);o.position.set(x,y,z);o.scale.set(sx,sy,sz);parent.add(o);return o}
@@ -21,7 +21,7 @@ export function decorateCake(cake) {
  // Piped buttercream rosettes: a single ridged, tapering mesh, with a subtle spiral twist.
  const creamColors=[0xfff4ed,0xffe9ed,0xf3eafb,0xfff1e4];
  const creamMats=creamColors.map(color=>{const m=new THREE.MeshPhysicalMaterial({color,roughness:.76,metalness:0,clearcoat:.08,clearcoatRoughness:.7});softenMaterial(m,'grain',.035);return m});
- const positions=[],uv=[],indices=[],rings=20,segments=48;
+ const positions=[],uv=[],indices=[],rings=compact?8:12,segments=32;
  for(let j=0;j<=rings;j++){const t=j/rings,y=.205*t;const radius=.155*Math.pow(Math.max(0,1-t),.72)*(.83+.17*Math.sin(Math.PI*t));for(let k=0;k<=segments;k++){const a=k/segments*Math.PI*2,groove=1+.14*Math.cos(8*a-3*t);positions.push(Math.cos(a)*radius*groove+.025*t*t,y,Math.sin(a)*radius*groove);uv.push(k/segments,t);}}
  for(let j=0;j<rings;j++)for(let k=0;k<segments;k++){const q=j*(segments+1)+k;indices.push(q,q+segments+1,q+1,q+1,q+segments+1,q+segments+2);}
  const rosette=new THREE.BufferGeometry();rosette.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));rosette.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));rosette.setIndex(indices);rosette.computeVertexNormals();
