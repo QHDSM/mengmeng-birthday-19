@@ -252,3 +252,23 @@ footer{padding-bottom:max(23px,env(safe-area-inset-bottom,0px));padding-left:max
 .hero .script{margin-bottom:8px}
 .finale .final-content .script{display:block;margin:0 0 30px;transform:rotate(-4deg)}
 .story-heading .script{margin-bottom:6px}
+
+/* Keep the video subjects visible when a touch viewport crops the frame. */
+@media (orientation: portrait) and (max-width: 1024px),
+       (orientation: portrait) and (pointer: coarse) {
+  .hero-image .reference-video { object-position: 44% 66%; }
+  .story-video { object-position: 50% 62%; }
+  .cake-scene .cake-scene-video { object-position: 7% center; }
+  .finale-video { object-position: left center; }
+  .finale-video-shade {
+    background: linear-gradient(180deg, #050a1d38, #050a1dbb 43%, #050a1d9c 72%, #050a1de0);
+  }
+}
+
+@media (orientation: landscape) and (max-width: 1024px),
+       (orientation: landscape) and (pointer: coarse) {
+  .hero-image .reference-video { object-position: center 73%; }
+  .story-video { object-position: center 68%; }
+  .cake-scene .cake-scene-video { object-position: center 60%; }
+  .finale-video { object-position: left 64%; }
+}
