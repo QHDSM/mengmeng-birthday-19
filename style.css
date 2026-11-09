@@ -105,3 +105,150 @@ header .counter{margin-left:auto}
 .cake-scene.is-cheering .cake-cheer-video{opacity:1}
 @media(max-width:700px){.cake-scene .cake-scene-video{object-position:10% center}}
 @media(prefers-reduced-motion:reduce){.cake-scene .cake-scene-video{display:block}.cake-scene .cake-cheer-video{display:none}}
+
+/* ============================================================
+   移动端 / 平板适配层 (v4)
+   目标：手机竖屏 · 手机横屏 · 平板竖屏 · 平板横屏 均不重叠、不裁切
+   ============================================================ */
+
+/* 1) 基础：禁止 iOS 横屏自动放大文字、关闭点按高亮、优化触控手势 */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+body{overscroll-behavior:none}
+button,a,[role="button"]{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+/* 手写体带 -7° 旋转，默认行盒高度不足会压到下方标题 */
+.script{line-height:1.32}
+
+/* 2) 安全区：刘海屏 / 底部横条 / 圆角屏留白 */
+header{padding-top:max(23px,env(safe-area-inset-top,0px));padding-left:max(5%,env(safe-area-inset-left,0px));padding-right:max(5%,env(safe-area-inset-right,0px))}
+footer{padding-bottom:max(23px,env(safe-area-inset-bottom,0px));padding-left:max(5%,env(safe-area-inset-left,0px));padding-right:max(5%,env(safe-area-inset-right,0px))}
+.music-control{right:max(14px,env(safe-area-inset-right,0px));bottom:max(14px,calc(env(safe-area-inset-bottom,0px) + 14px))}
+
+/* 3) 触屏设备取消悬停位移，避免"粘滞 hover" */
+@media (hover:none){
+  .primary:hover,.outline:hover{transform:none;box-shadow:none}
+  .card:hover{transform:none;border-color:#344970}
+  .hero .primary:hover{transform:none}
+}
+
+/* 4) 触控目标尺寸：移动端可点区域不小于 44px */
+@media (pointer:coarse),(max-width:1024px){
+  .primary,.outline{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+  footer button{width:44px;height:44px}
+  .card-foot b{width:38px;height:38px}
+  .music-control{min-height:48px}
+}
+
+/* 5) 平板：701px–1024px 走独立版式，避免桌面版被拉伸 */
+@media (min-width:701px) and (max-width:1024px){
+  .hero-content{left:9%}
+  .hero h1{font-size:clamp(64px,9vw,104px)}
+  .hero .muted{font-size:15px}
+  .bottom-hint{bottom:96px}
+  .wish-head .display{font-size:clamp(46px,6.6vw,72px);margin:8px 0 26px}
+  .cards{gap:22px}
+  .card-image{height:min(30vh,280px)}
+  .card-foot{font-size:14px;padding:16px 10px 10px}
+  .glass{font-size:14px;padding:16px 28px}
+  .cake-scene .cake-heading{width:min(38%,460px);top:max(84px,13%)}
+  .cake-scene .cake-side-note{width:24%}
+  .finale .final-content{left:54%;right:8%}
+  .finale .final-content h2{font-size:clamp(30px,4vw,44px)}
+  footer .progress{width:180px}
+}
+
+/* 6) 平板竖屏：适当收紧垂直留白 */
+@media (min-width:701px) and (max-width:1024px) and (orientation:portrait){
+  .wishes{padding:9% 7% 8%}
+  .story-copy{padding:7% 9%}
+  .cake-scene .cake-heading h2{font-size:clamp(24px,3.4vw,32px)}
+}
+
+/* 7) 横屏矮视口（手机横放）：核心修复——去掉重叠、取消裁切 */
+@media (orientation:landscape) and (max-height:560px){
+  /* 底部提示在横屏会与正文重叠，直接隐藏 */
+  .hero .bottom-hint{display:none}
+
+  /* 音乐控件收成圆形图标，避免遮住终章按钮 */
+  .music-control{width:44px;height:44px;min-height:44px;padding:0;border-radius:50%;justify-content:center;gap:0}
+  .music-label{display:none}
+  .music-icon{width:36px;height:36px}
+
+  /* 底栏压缩，给场景留出高度 */
+  header{padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:12px}
+  footer{padding-bottom:max(12px,env(safe-area-inset-bottom,0px));padding-top:10px}
+  footer button{width:36px;height:36px;font-size:16px}
+  footer .progress{width:96px}
+  .counter{font-size:10px}
+
+  /* 首页 */
+  .hero-content{top:52%;transform:translateY(-50%);left:7%}
+  .hero h1{font-size:clamp(32px,8.6vh,50px);margin:6px 0 6px;line-height:1}
+  .hero h2{font-size:clamp(17px,4.4vh,26px)}
+  .hero .script{font-size:clamp(15px,4.2vh,23px);margin-left:16px}
+  .hero .eyebrow{font-size:9px}
+  .hero .muted{font-size:11px;line-height:1.65;margin:6px 0 10px}
+  .hero .primary{padding:10px 17px;font-size:10px;min-height:38px}
+
+  /* 寄语 */
+  .story-copy{padding:6% 8%;gap:6%}
+  .story-heading .display{font-size:clamp(30px,8.4vh,48px)}
+  .story-heading .script{font-size:clamp(15px,4.2vh,23px);margin-left:80px;margin-top:-10px}
+  .glass{font-size:11px;line-height:1.6;padding:11px 18px;margin:10px 0}
+  .glass p{margin:5px 0}
+  .story-letter .primary{padding:9px 16px;font-size:10px;min-height:36px}
+
+  /* 祝福卡片 */
+  .wishes{padding:7% 6% 6%}
+  .wish-head .display{font-size:clamp(26px,7vh,40px);margin:4px 0 12px}
+  .wish-head .muted{font-size:10px;margin:4px 0 10px}
+  .cards{gap:10px}
+  .card-image{height:min(24vh,150px)}
+  .card-image .wish-art strong{font-size:13px}
+  .card-image .wish-art small{font-size:9px}
+  .card-foot{font-size:10px;padding:8px 5px 5px}
+  .card-foot b{width:26px;height:26px;font-size:11px}
+  .wish-footer{height:auto;margin-top:9px;font-size:10px}
+  .wish-footer .primary{padding:9px 16px;font-size:10px;min-height:36px}
+
+  /* 蛋糕 */
+  .cake-scene .cake-heading{top:max(12px,7%);width:min(40%,360px)}
+  .cake-scene .cake-heading .eyebrow{font-size:9px}
+  .cake-scene .cake-heading h2{font-size:clamp(16px,4.2vh,24px);margin:5px 0 6px}
+  .cake-scene .cake-heading p:not(.eyebrow){font-size:11px;line-height:1.5}
+  .cake-scene .cake-side-note{top:52%;width:26%}
+  .cake-side-note .cake-plaque{font-size:10px;padding:6px 12px}
+  .cake-side-note .cake-tip{font-size:10px;margin:8px 0 0}
+  .cake-toolbar{bottom:max(52px,13%);left:auto;right:5%;justify-content:flex-end}
+  .cake-toolbar button{padding:10px 15px;font-size:10px;min-height:38px}
+
+  /* 终章 */
+  .finale .final-content{left:50%;right:5%;top:50%;transform:translateY(-50%)}
+  .finale .final-content .script{font-size:clamp(16px,4.4vh,24px);display:block;margin:0 0 24px;line-height:1.45;transform:rotate(-4deg)}
+  .finale .final-content h2{font-size:clamp(20px,6vh,32px);line-height:1.22;margin:6px 0}
+  .finale .final-content>p:not(.script){font-size:clamp(11px,3.1vh,14px);line-height:1.55;margin-bottom:12px}
+  .final-actions{gap:8px}
+  .final-actions button{font-size:11px;min-height:36px;padding:9px 14px}
+  .final-content .song-status{font-size:10px;min-height:12px;margin-top:5px}
+}
+
+/* 8) 手机竖屏：超小屏进一步收紧 */
+@media (max-width:380px){
+  .hero h1{font-size:clamp(56px,15.5vw,88px)}
+  .card-foot{font-size:11px}
+  .card-image{height:min(30vh,240px)}
+  .music-control{padding:5px 9px 5px 5px}
+  .music-label strong{font-size:12px}
+  .music-label small{font-size:9px}
+}
+
+/* 9) 键盘可达性：焦点可见（触屏无影响） */
+@media (pointer:coarse){
+  .card:focus-visible,.primary:focus-visible,.outline:focus-visible{outline:2px solid #c1ff39;outline-offset:3px}
+}
+
+/* 10) 手写体安全间距校准
+   Pacifico 字形自带下伸部且整词旋转 -7°，行盒默认高度不足会压住下方标题 */
+.script{line-height:1.45}
+.hero .script{margin-bottom:8px}
+.finale .final-content .script{display:block;margin:0 0 30px;transform:rotate(-4deg)}
+.story-heading .script{margin-bottom:6px}
