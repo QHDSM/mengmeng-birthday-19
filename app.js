@@ -1,5 +1,10 @@
-const $=s=>document.querySelector(s), scenes=[...document.querySelectorAll('.scene')];let current=0, collected=new Set(), selected=null;
-function go(n){current=Math.max(0,Math.min(scenes.length-1,n));scenes.forEach((s,i)=>{s.classList.toggle('active',i===current);s.inert=i!==current});$('#counter').textContent=String(current+1).padStart(2,'0')+' / 05';$('#progress').style.width=((current+1)*20)+'%';$('#back').style.visibility=current?'visible':'hidden';syncCakeScene();syncSceneVideo();if(current!==4&&!finalSong.paused){finalSong.pause();finalSong.currentTime=0}}
+import { softenMaterial, flickerMaterial } from './surface-materials.js?v=20261102-10';
+import * as THREE from './three.module.js';
+import { decorateCake } from './cake-ornaments.js?v=20261102-11';
+import { createLivingCake } from './living-cake.js?v=20261102-10';
+let livingCake;
+const $=s=>document.querySelector(s), scenes=[...document.querySelectorAll('.scene')];let current=0, collected=new Set(), selected=null, blown=false;
+function go(n){current=Math.max(0,Math.min(scenes.length-1,n));scenes.forEach((s,i)=>{s.classList.toggle('active',i===current);s.inert=i!==current});$('#counter').textContent=String(current+1).padStart(2,'0')+' / 05';$('#progress').style.width=((current+1)*20)+'%';$('#back').style.visibility=current?'visible':'hidden';if(current===3)resizeCake();syncSceneVideo();if(current!==4&&!finalSong.paused){finalSong.pause();finalSong.currentTime=0}}
 document.querySelectorAll('[data-next]').forEach(b=>b.onclick=()=>go(current+1));$('#back').onclick=()=>go(current-1);$('#restart').onclick=e=>{e.preventDefault();reset();go(0)};$('#again').onclick=()=>{reset();go(0)};
 function reset(){pendingCards.forEach(clearTimeout);pendingCards.clear();$('#wish-bursts').replaceChildren();collected.clear();document.querySelectorAll('.card').forEach(c=>{c.classList.remove('collected','opening');c.disabled=false;c.setAttribute('aria-expanded','false')});$('#wish-count').textContent='已收集 0 / 3';$('#wish-instruction').innerHTML='点击卡片，收下三份星际祝福。<br>每收下一份，它就会化作星光。';$('#to-cake').hidden=true;relight()}
 // The reference opens the wish in place before a small ring of blessings appears.
@@ -62,142 +67,149 @@ function note(ctx,master,freq,start,duration,peak,attack){const osc=ctx.createOs
 function scheduleBlessing(){if(!musicContext||!musicGain||!musicPlaying)return;const ctx=musicContext,now=ctx.currentTime+.06,chords=[[261.63,329.63,392],[196,246.94,392],[220,261.63,329.63],[174.61,220,349.23]],melody=[523.25,659.25,783.99,659.25,493.88,587.33,783.99,587.33,440,523.25,659.25,523.25,392,523.25,698.46,659.25];chords.forEach((chord,i)=>chord.forEach(f=>note(ctx,musicGain,f/2,now+i*3,3.5,.045,.45)));melody.forEach((f,i)=>{note(ctx,musicGain,f,now+i*.75,1.35,.065,.025);note(ctx,musicGain,f*2,now+i*.75,.65,.015,.02)})}
 async function toggleBlessing(){if(musicBusy)return;musicBusy=true;try{if(musicPlaying){musicPlaying=false;clearInterval(musicTimer);musicTimer=null;const old=musicContext;musicContext=null;musicGain=null;setBackgroundState('paused');if(old&&old.state!=='closed')await old.close();return}const AudioEngine=window.AudioContext||window.webkitAudioContext;if(!AudioEngine)throw new Error('Audio unavailable');musicContext=new AudioEngine();musicGain=musicContext.createGain();musicGain.gain.value=finalSong.paused?.32:.055;musicGain.connect(musicContext.destination);if(musicContext.state==='suspended')await musicContext.resume();musicPlaying=true;setBackgroundState('playing');scheduleBlessing();musicTimer=setInterval(scheduleBlessing,12000)}catch(error){musicPlaying=false;if(musicTimer)clearInterval(musicTimer);musicTimer=null;if(musicContext&&musicContext.state!=='closed')musicContext.close().catch(()=>{});musicContext=null;musicGain=null;setBackgroundState('error')}finally{musicBusy=false}}
 async function toggleFinale(){if(!finalSong.paused){finalSong.pause();setFinalState('paused');duckBlessing();return}try{if(finalSong.ended)finalSong.currentTime=0;await finalSong.play();setFinalState('playing');duckBlessing()}catch(error){setFinalState('error');duckBlessing()}}musicControl.addEventListener('click',toggleBlessing);songButton.addEventListener('click',toggleFinale);finalSong.addEventListener('play',duckBlessing);finalSong.addEventListener('pause',()=>{if(!finalSong.ended)setFinalState('paused');duckBlessing()});finalSong.addEventListener('ended',()=>{setFinalState('ended');duckBlessing()});finalSong.addEventListener('error',()=>{setFinalState('error');duckBlessing()});
-// Use small, cached halos for the stars instead of blurring every particle every frame.
-const stars = $('#stars'), sx = stars.getContext('2d');
-const life = $('#hero-life'), lc = life.getContext('2d');
-const halo = document.createElement('canvas');
-halo.width = halo.height = 16;
-const hx = halo.getContext('2d');
-const haloFill = hx.createRadialGradient(8, 8, 0, 8, 8, 8);
-haloFill.addColorStop(0, '#fff7fc');
-haloFill.addColorStop(.18, '#f4d9ffb0');
-haloFill.addColorStop(1, '#e5d8ff00');
-hx.fillStyle = haloFill;
-hx.fillRect(0, 0, 16, 16);
-let dots, motes, lifeWidth, lifeHeight, lastSkyFrame = 0;
-function sizeSky() {
-  stars.width = innerWidth;
-  stars.height = innerHeight;
-  dots = Array.from({length: Math.min(100, Math.floor(innerWidth / 8))}, () => ({
-    x: Math.random() * innerWidth, y: Math.random() * innerHeight, alpha: .2 + Math.random() * .45
-  }));
-  lifeWidth = life.width = Math.max(1, life.clientWidth);
-  lifeHeight = life.height = Math.max(1, life.clientHeight);
-  motes = Array.from({length: 42}, () => ({
-    x: Math.random() * lifeWidth, y: Math.random() * lifeHeight, size: 4 + Math.random() * 8,
-    speed: .2 + Math.random() * .6, phase: Math.random() * 6
-  }));
-}
-function drawSky(now) {
-  requestAnimationFrame(drawSky);
-  if (document.hidden || (current !== 0 && current !== 2) || now - lastSkyFrame < 33) return;
-  lastSkyFrame = now;
-  sx.clearRect(0, 0, stars.width, stars.height);
-  sx.fillStyle = '#d9e8ff';
-  for (const dot of dots) {
-    if ((dot.y -= .15) < 0) dot.y = stars.height;
-    sx.globalAlpha = dot.alpha;
-    sx.fillRect(dot.x, dot.y, 1, 1);
-  }
-  if (current !== 0) return;
-  lc.clearRect(0, 0, lifeWidth, lifeHeight);
-  for (const mote of motes) {
-    if ((mote.y -= mote.speed) < 0) {
-      mote.y = lifeHeight;
-      mote.x = Math.random() * lifeWidth;
-    }
-    lc.globalAlpha = .12 + .72 * (.5 + .5 * Math.sin(now * .0015 + mote.phase));
-    lc.drawImage(halo, mote.x, mote.y, mote.size, mote.size);
-  }
-}
-sizeSky();
-window.addEventListener('resize', sizeSky);
-requestAnimationFrame(drawSky);
+// A star field remains alive across all scenes.
+const stars=$('#stars'),sx=stars.getContext('2d');let dots=[];function sizeStars(){const d=Math.min(devicePixelRatio||1,2);stars.width=innerWidth*d;stars.height=innerHeight*d;sx.setTransform(d,0,0,d,0,0);dots=Array.from({length:Math.min(120,Math.floor(innerWidth/8))},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*1.4+.3,v:.1+Math.random()*.35,a:Math.random()*6}))}function drawStars(t){sx.clearRect(0,0,innerWidth,innerHeight);for(const d of dots){d.y-=d.v;if(d.y<0)d.y=innerHeight;sx.globalAlpha=.2+.65*(.5+.5*Math.sin(t*.001+d.a));sx.fillStyle='#d9e8ff';sx.beginPath();sx.arc(d.x,d.y,d.r,0,7);sx.fill()}sx.globalAlpha=1;requestAnimationFrame(drawStars)}sizeStars();requestAnimationFrame(drawStars);window.addEventListener('resize',sizeStars);
+// A living sky: independently drifting stardust and soft fireflies over the landscape.
+const life=$('#hero-life'),lc=life.getContext('2d');let motes=[];function sizeLife(){const d=Math.min(devicePixelRatio||1,2),r=life.getBoundingClientRect();life.width=Math.max(1,Math.round(r.width*d));life.height=Math.max(1,Math.round(r.height*d));lc.setTransform(d,0,0,d,0,0);motes=Array.from({length:65},()=>({x:Math.random()*r.width,y:Math.random()*r.height,r:.5+Math.random()*2,speed:.1+Math.random()*.3,phase:Math.random()*6,color:Math.random()>.5?'#ffc7e7':'#c4e9ff'}))}function drawLife(t){if(current===0){let w=life.clientWidth,h=life.clientHeight;lc.clearRect(0,0,w,h);for(const p of motes){p.y-=p.speed;p.x+=Math.sin(t*.0006+p.phase)*.12;if(p.y<0){p.y=h;p.x=Math.random()*w}lc.globalAlpha=.1+.7*(.5+.5*Math.sin(t*.0015+p.phase));lc.fillStyle=p.color;lc.shadowColor=p.color;lc.shadowBlur=8;lc.beginPath();lc.arc(p.x,p.y,p.r,0,Math.PI*2);lc.fill()}lc.shadowBlur=0;lc.globalAlpha=1}requestAnimationFrame(drawLife)}sizeLife();window.addEventListener('resize',sizeLife);requestAnimationFrame(drawLife);
+// ── Cake: glossy galaxy-glazed cake sealed inside a glass globe, following the supplied reference video ──
+let renderer,scene,camera,cakeGroup,cakeMat,decorGroup,flame,flameLight,flameOuter,flameInner,particles,bloomTarget,bloomScene,bloomCamera,bloomMaterial,orbitSparkles=[],swimmers=[],bokehSprites=[],domeArcs=[],plateGlow=null,confetti=[],cakeEnterT=0,cakeWasOn=false,flameHalo=null,smokeTex=null,smokePuffs=[],blowStart=0,blowFired=false,lastNow=0,clock=new THREE.Clock();const cakeCanvas=$('#cake-canvas');
+const SPRINKLE=['#ffe14d','#4a9bff','#ff4f8b','#ff3b30','#fff4d6','#b98bff','#6dffa2','#ffa947','#4fe6ff','#ffd36e'];const CANDY=['#ffd21f','#2f7dff','#ff3d7f','#ff2d2d','#a45bff','#22d67a','#ff8a1f','#25d4ff'];
+function makeRng(seed){let s=seed>>>0;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296}}
+function makeGlowTexture(star=true){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d'),g=x.createRadialGradient(64,64,0,64,64,64);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(.18,'rgba(255,255,255,.92)');g.addColorStop(.42,'rgba(255,255,255,.16)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,128,128);if(star){x.save();x.translate(64,64);x.beginPath();for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,r=i%2?20:56;i?x.lineTo(Math.cos(a)*r,Math.sin(a)*r):x.moveTo(Math.cos(a)*r,Math.sin(a)*r)}x.closePath();x.shadowColor='rgba(255,255,255,.9)';x.shadowBlur=14;x.fillStyle='#fff';x.fill();x.fill();x.restore()}return new THREE.CanvasTexture(c)}
+function makeSoftTexture(){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d'),g=x.createRadialGradient(64,64,0,64,64,64);g.addColorStop(0,'rgba(255,255,255,.95)');g.addColorStop(.35,'rgba(255,255,255,.35)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,128,128);return new THREE.CanvasTexture(c)}
+function sprinklePath(x,px,py,r,rot){x.beginPath();for(let i=0;i<10;i++){const a=rot+i*Math.PI/5-Math.PI/2,rr=i%2?r*.45:r;const fx=px+Math.cos(a)*rr,fy=py+Math.sin(a)*rr;i?x.lineTo(fx,fy):x.moveTo(fx,fy)}x.closePath()}
+function poolFill(x,w,h,cx,cy,r,stops){const g=x.createRadialGradient(cx,cy,0,cx,cy,r);for(const s of stops)g.addColorStop(s[0],s[1]);x.fillStyle=g;x.fillRect(0,0,w,h)}
+// Night-sky glaze on the cake side: blue pools near the base, rainbow star stickers, hand-lettered greeting.
+function drawCakeSide(canvas){const W=canvas.width,H=canvas.height,x=canvas.getContext('2d'),rand=makeRng(3112);x.clearRect(0,0,W,H);x.fillStyle='#070811';x.fillRect(0,0,W,H);const lg=x.createLinearGradient(0,0,0,H);lg.addColorStop(0,'#0d1025');lg.addColorStop(.45,'#080a19');lg.addColorStop(1,'#04050e');x.fillStyle=lg;x.fillRect(0,0,W,H);
+poolFill(x,W,H,W*.30,H*1.02,H*.95,[[0,'rgba(40,108,235,.8)'],[.42,'rgba(22,62,196,.4)'],[1,'rgba(8,18,70,0)']]);
+poolFill(x,W,H,W*.64,H*1.06,H*1.0,[[0,'rgba(44,196,245,.55)'],[.5,'rgba(14,104,196,.28)'],[1,'rgba(4,18,58,0)']]);
+poolFill(x,W,H,W*.85,H*.88,H*.68,[[0,'rgba(92,68,240,.4)'],[1,'rgba(0,0,0,0)']]);
+poolFill(x,W,H,W*.12,H*.78,H*.55,[[0,'rgba(156,54,192,.34)'],[1,'rgba(0,0,0,0)']]);
+poolFill(x,W,H,W*.52,H*.04,H*.5,[[0,'rgba(255,196,120,.24)'],[1,'rgba(0,0,0,0)']]);
+for(let i=0;i<30;i++){const px=rand()*W,py=H*(.005+rand()*.2),r=4+rand()*20,rot=rand()*6.283,col=SPRINKLE[(rand()*SPRINKLE.length)|0];x.save();x.globalAlpha=.45+rand()*.5;x.fillStyle=col;x.shadowColor=col;x.shadowBlur=6;sprinklePath(x,px,py,r,rot);x.fill();x.restore()}
+for(let i=0;i<32;i++){const px=rand()*W,py=H*(.06+rand()*.93),r=7+Math.pow(rand(),2.4)*56,rot=rand()*6.283,col=SPRINKLE[(rand()*SPRINKLE.length)|0];x.save();x.globalAlpha=.55+rand()*.35;x.fillStyle=col;x.shadowColor=col;x.shadowBlur=7;sprinklePath(x,px,py,r,rot);x.fill();x.restore()}
+for(let i=0;i<45;i++){const px=rand()*W,py=rand()*H,r=3+rand()*11,rot=rand()*6.283,col=SPRINKLE[(rand()*SPRINKLE.length)|0];x.save();x.globalAlpha=.4+rand()*.45;x.fillStyle=col;x.shadowColor=col;x.shadowBlur=4;sprinklePath(x,px,py,r,rot);x.fill();x.restore()}for(let i=0;i<360;i++){const px=rand()*W,py=rand()*H,r=1.4+rand()*8;x.globalAlpha=.3+rand()*.6;x.fillStyle=SPRINKLE[(rand()*SPRINKLE.length)|0];x.beginPath();x.arc(px,py,r,0,7);x.fill()}
+for(let i=0;i<760;i++){x.globalAlpha=.14+rand()*.55;x.fillStyle='#edf2ff';x.beginPath();x.arc(rand()*W,rand()*H,rand()*1.7,0,7);x.fill()}
 
-let cakePreviews, cakeModule, cakeSetup, cake, blowAt = 0, fireTimer;
-function loadCakeModule() {
-  cakeModule ??= import('./cake.js?v=20261109-22').catch(error => {
-    cakeModule = undefined;
-    console.warn('Cake module unavailable', error);
-    return null;
-  });
-  return cakeModule;
-}
-function cakeIsVisible() {
-  return current === 3 && !document.hidden && !reducedMotion?.matches;
-}
-async function startCake() {
-  const module = await loadCakeModule();
-  if (!module || !cakeIsVisible()) {
-    cakeSetup = undefined;
-    return;
-  }
-  // Let the poster and the controls paint before starting WebGL.
-  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-  if (!cakeIsVisible()) {
-    cakeSetup = undefined;
-    return;
-  }
-  cake = await module.createCake();
-  if (!cake) return;
-  if (blowAt) cake.blow(blowAt);
-  cake.setActive(cakeIsVisible());
-}
-function syncCakeScene() {
-  if (current === 2) {
-    cakePreviews ??= ['cake-preview.webp', 'cake-preview-blown.webp'].map(src => {
-      const preview = new Image();
-      preview.src = src;
-      return preview;
-    });
-    if (!reducedMotion?.matches) loadCakeModule();
-  }
-  if (cakeIsVisible()) {
-    if (cake) cake.setActive(true);
-    else cakeSetup ??= startCake();
-  } else {
-    cake?.setActive(false);
-    clearCelebration();
-  }
-}
-document.addEventListener('visibilitychange', syncCakeScene);
-reducedMotion?.addEventListener?.('change', syncCakeScene);
-
+x.globalAlpha=1;x.save();x.translate(900,430);x.rotate(-.04);x.textAlign='center';x.textBaseline='middle';x.font='400 42px Pacifico, "Segoe Script", "Comic Sans MS", cursive';x.shadowColor='rgba(0,0,0,.6)';x.shadowBlur=6;x.fillStyle='#f7efdd';x.fillText('happy birthday',0,0);x.font='600 24px "Noto Sans SC", "Microsoft YaHei", sans-serif';x.fillStyle='#efe4cd';x.shadowBlur=5;x.fillText('19 岁 · 生日快乐',0,38);x.restore()}
+function makeSideTexture(){const c=document.createElement('canvas');c.width=2048;c.height=1024;drawCakeSide(c);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.wrapS=THREE.RepeatWrapping;t.offset.x=.5;t.anisotropy=4;return{c,tex:t}}
+// Glossy top: a heap of rainbow sprinkles over dark glaze, lit warm from the candle.
+function makeTopTextures(){const S=1024,map=document.createElement('canvas'),emi=document.createElement('canvas');map.width=map.height=emi.width=emi.height=S;const x=map.getContext('2d'),e=emi.getContext('2d'),rand=makeRng(7719);x.fillStyle='#090b17';x.fillRect(0,0,S,S);poolFill(x,S,S,S*.5,S*.5,S*.64,[[0,'rgba(255,206,132,.2)'],[.5,'rgba(122,82,190,.16)'],[1,'rgba(10,12,30,0)']]);poolFill(x,S,S,S*.26,S*.9,S*.5,[[0,'rgba(56,120,255,.55)'],[1,'rgba(0,0,0,0)']]);e.fillStyle='#000';e.fillRect(0,0,S,S);poolFill(e,S,S,S*.5,S*.5,S*.52,[[0,'rgba(255,232,186,.5)'],[.55,'rgba(255,180,90,.14)'],[1,'rgba(0,0,0,0)']]);for(let i=0;i<80;i++){const px=rand()*S,py=rand()*S,r=7+Math.pow(rand(),1.5)*30,rot=rand()*6.283,col=SPRINKLE[(rand()*SPRINKLE.length)|0];for(const ctx of [x,e]){ctx.save();ctx.globalAlpha=ctx===x?.85+rand()*.15:.5+rand()*.45;ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=9;sprinklePath(ctx,px,py,r,rot);ctx.fill();ctx.restore()}}for(let i=0;i<260;i++){const px=rand()*S,py=rand()*S,r=1.6+rand()*7,col=SPRINKLE[(rand()*SPRINKLE.length)|0];for(const ctx of [x,e]){ctx.globalAlpha=ctx===x?.4+rand()*.55:.25+rand()*.5;ctx.fillStyle=col;ctx.beginPath();ctx.arc(px,py,r,0,7);ctx.fill()}}x.globalAlpha=1;e.globalAlpha=1;const m=new THREE.CanvasTexture(map);m.colorSpace=THREE.SRGBColorSpace;const em=new THREE.CanvasTexture(emi);em.colorSpace=THREE.SRGBColorSpace;return{map:m,emi:em}}
+// Studio-like environment so the clearcoated glaze picks up colourful streaks instead of flat black.
+function makeEnvironment(){const c=document.createElement('canvas');c.width=1024;c.height=512;const x=c.getContext('2d');x.fillStyle='#04050b';x.fillRect(0,0,1024,512);
+poolFill(x,1024,512,340,92,320,[[0,'rgba(255,246,228,.9)'],[.4,'rgba(255,222,176,.28)'],[1,'rgba(0,0,0,0)']]);
+poolFill(x,1024,512,790,120,270,[[0,'rgba(198,224,255,.75)'],[1,'rgba(0,0,0,0)']]);
+poolFill(x,1024,512,150,330,320,[[0,'rgba(52,112,255,.6)'],[1,'rgba(0,0,0,0)']]);
+poolFill(x,1024,512,780,392,290,[[0,'rgba(178,72,255,.5)'],[1,'rgba(0,0,0,0)']]);
+poolFill(x,1024,512,1000,300,240,[[0,'rgba(64,226,255,.42)'],[1,'rgba(0,0,0,0)']]);
+const t=new THREE.CanvasTexture(c);t.mapping=THREE.EquirectangularReflectionMapping;t.colorSpace=THREE.SRGBColorSpace;return t}
+function initCake(){try{
+renderer=new THREE.WebGLRenderer({canvas:cakeCanvas,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.15;
+scene=new THREE.Scene();
+camera=new THREE.PerspectiveCamera(35,1,.1,120);
+camera.position.set(0,6.9,12.8);
+camera.lookAt(0,2.0,0);
+const envTex=makeEnvironment();const pmrem=new THREE.PMREMGenerator(renderer);scene.environment=pmrem.fromEquirectangular(envTex).texture;pmrem.dispose();
+scene.add(new THREE.AmbientLight(0x93a8ff,.55));
+for(const [color,power,pos]of [[0xffe2b4,26,[-3.2,7.2,5]],[0x3d7dff,55,[4.6,1.3,-1.4]],[0x3fe0ff,38,[-4.2,.9,2.4]],[0xffb9ef,30,[2.6,4.6,-4.2]]]){const l=new THREE.PointLight(color,power,34);l.position.set(...pos);scene.add(l)}
+cakeGroup=new THREE.Group();cakeGroup.name='globe-cake';scene.add(cakeGroup);
+const phys=(color,roughness=.24,metalness=.06)=>new THREE.MeshPhysicalMaterial({color,roughness,metalness,clearcoat:1,clearcoatRoughness:.12,envMapIntensity:1.15});
+function add(g,m,x,y,z,parent=cakeGroup){const o=new THREE.Mesh(g,m);o.position.set(x,y,z);parent.add(o);return o}
+const glow=makeGlowTexture(),soft=makeSoftTexture();
+// Luminous white tray under the cake.
+const plateMat=new THREE.MeshStandardMaterial({color:0xf8faff,roughness:.2,metalness:.04,emissive:0xcfe0ff,emissiveIntensity:.62,envMapIntensity:1.15});
+add(new THREE.CylinderGeometry(2.72,2.66,.06,128),plateMat,0,.033,0);
+const rimGlow=add(new THREE.TorusGeometry(2.68,.03,8,150),new THREE.MeshBasicMaterial({color:0xeef6ff,transparent:true,opacity:.6,blending:THREE.AdditiveBlending,depthWrite:false}),0,.12,0);rimGlow.rotation.x=Math.PI/2;
+plateGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:soft,color:0xc6dcff,transparent:true,opacity:.32,blending:THREE.AdditiveBlending,depthWrite:false}));
+plateGlow.position.set(0,.08,0);plateGlow.scale.set(11.5,3.2,1);scene.add(plateGlow);
+// Cake body: one wide tier of galaxy glaze with rainbow star decals.
+const side=makeSideTexture();
+const tops=makeTopTextures();
+cakeMat=new THREE.MeshPhysicalMaterial({color:0xffffff,map:side.tex,roughness:.24,metalness:.05,clearcoat:1,clearcoatRoughness:.06,envMapIntensity:.85});
+const topMat=new THREE.MeshPhysicalMaterial({color:0xffffff,map:tops.map,emissive:0xffffff,emissiveMap:tops.emi,emissiveIntensity:.012,roughness:.3,metalness:.02,clearcoat:.55,clearcoatRoughness:.14,envMapIntensity:.55});
+const glazeMat=new THREE.MeshPhysicalMaterial({color:0x080a16,roughness:.1,metalness:.14,clearcoat:1,clearcoatRoughness:.04,iridescence:.72,iridescenceIOR:1.5,iridescenceThicknessRange:[120,760],envMapIntensity:1.15});
+softenMaterial(cakeMat,'grain',.085);softenMaterial(topMat,'grain',.12);softenMaterial(glazeMat,'grain',.018);
+const body=add(new THREE.CylinderGeometry(1.95,1.98,2.62,128,1),[cakeMat,topMat,cakeMat],0,1.46,0);body.name='globe-cake-body';
+const mound=add(new THREE.SphereGeometry(1.9,64,24,0,6.283,0,Math.PI/2),topMat,0,2.77,0);mound.scale.set(1,.06,1);
+// Scalloped glaze rim that drips over the top edge.
+const verts=[],indices=[];for(let i=0;i<=160;i++){const a=i/160*Math.PI*2,low=2.77-.055-.13*Math.pow(.5+.5*Math.sin(a*13+.7),3)-.05*Math.pow(.5+.5*Math.sin(a*7),6);verts.push(Math.sin(a)*1.96,2.77,Math.cos(a)*1.96,Math.sin(a)*1.985,low,Math.cos(a)*1.985);if(i<160){const j=i*2;indices.push(j,j+1,j+2,j+1,j+3,j+2)}}const drip=new THREE.BufferGeometry();drip.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));drip.setIndex(indices);drip.computeVertexNormals();add(drip,glazeMat,0,0,0);const topRim=add(new THREE.TorusGeometry(1.965,.045,10,160),glazeMat,0,2.76,0);topRim.rotation.x=Math.PI/2;
+// Flat sprinkle bed: stars, hearts, rods and discs all lie flat on the icing.
+const starShape=new THREE.Shape();for(let j=0;j<10;j++){const a=j*Math.PI/5-Math.PI/2,r=j%2?.56:1;j?starShape.lineTo(Math.cos(a)*r,Math.sin(a)*r):starShape.moveTo(Math.cos(a)*r,Math.sin(a)*r)}starShape.closePath();
+const starGeo=new THREE.ExtrudeGeometry(starShape,{depth:.05,bevelEnabled:true,bevelThickness:.015,bevelSize:.035,bevelSegments:2});
+const heartShape=(()=>{const sh=new THREE.Shape();sh.moveTo(0,-.55);sh.bezierCurveTo(-.95,-.02,-.74,.74,-.05,.46);sh.bezierCurveTo(.52,.74,.95,-.02,0,-.55);return sh})();
+const heartGeo=new THREE.ExtrudeGeometry(heartShape,{depth:.05,bevelEnabled:true,bevelThickness:.015,bevelSize:.03,bevelSegments:2});
+const rodGeo=new THREE.CylinderGeometry(.017,.017,.17,6),discGeo=new THREE.CylinderGeometry(.036,.036,.012,10);
+const heapMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.7,metalness:0});
+const m4=new THREE.Matrix4(),qq=new THREE.Quaternion(),qYaw=new THREE.Quaternion(),qFix=new THREE.Quaternion(),sv=new THREE.Vector3(),pv=new THREE.Vector3(),axisY=new THREE.Vector3(0,1,0),axisX=new THREE.Vector3(1,0,0),axisZ=new THREE.Vector3(0,0,1);
+const heapRand=makeRng(4242),surfY=rr=>2.77+.1*(1-Math.pow(Math.min(1,rr/1.92),2));
+function addSprinkles(geo,count,mode,unit){const mesh=new THREE.InstancedMesh(geo,heapMat,count);for(let i=0;i<count;i++){const a=heapRand()*6.283,rr=Math.sqrt(heapRand())*1.82,y=surfY(rr)+.01+heapRand()*.014;pv.set(Math.cos(a)*rr,y,Math.sin(a)*rr);qYaw.setFromAxisAngle(axisY,heapRand()*6.283);if(mode==='rod')qFix.setFromAxisAngle(axisZ,Math.PI/2+(heapRand()-.5)*.08);else if(mode==='disc')qFix.setFromAxisAngle(axisX,(heapRand()-.5)*.06);else qFix.setFromAxisAngle(axisX,-Math.PI/2);qq.copy(qYaw).multiply(qFix);const sc=(mode==='rod'||mode==='disc')?.9+heapRand()*.3:unit*(.7+heapRand()*.7);sv.set(sc,sc,sc);m4.compose(pv,qq,sv);mesh.setMatrixAt(i,m4);mesh.setColorAt(i,new THREE.Color(CANDY[i%CANDY.length]).multiplyScalar(.95))}mesh.instanceMatrix.needsUpdate=true;mesh.instanceColor.needsUpdate=true;cakeGroup.add(mesh);return mesh}
+const heap=addSprinkles(starGeo,65,'star',.095),hearts=addSprinkles(heartGeo,70,'heart',.085),rods=addSprinkles(rodGeo,105,'rod'),discs=addSprinkles(discGeo,65,'disc');
+const beads=new THREE.InstancedMesh(new THREE.SphereGeometry(.02,8,6),new THREE.MeshBasicMaterial({color:0xffffff,toneMapped:false}),240);for(let i=0;i<240;i++){const a=heapRand()*6.283,rr=Math.sqrt(heapRand())*1.84,y=surfY(rr)+.016+heapRand()*.025;pv.set(Math.cos(a)*rr,y,Math.sin(a)*rr);qq.setFromEuler(new THREE.Euler(heapRand()*6.283,heapRand()*6.283,0));const sc=.9+heapRand()*1.3;sv.set(sc,sc,sc);m4.compose(pv,qq,sv);beads.setMatrixAt(i,m4);beads.setColorAt(i,new THREE.Color(CANDY[(heapRand()*CANDY.length)|0]).multiplyScalar(1.05))}beads.instanceMatrix.needsUpdate=true;beads.instanceColor.needsUpdate=true;cakeGroup.add(beads);
+decorateCake(cakeGroup);
+const waxProfile=[new THREE.Vector2(0,0),new THREE.Vector2(.11,0),new THREE.Vector2(.115,.08),new THREE.Vector2(.112,.58),new THREE.Vector2(.10,.74),new THREE.Vector2(.075,.77),new THREE.Vector2(0,.755)];const candle=add(new THREE.LatheGeometry(waxProfile,48),phys(0xffd991,.48,.02),0,2.84,0);candle.name='gold-candle';softenMaterial(candle.material,'grain',.065);
+// Uneven raised wax trails and a recessed wax pool make the candle visibly sculpted.
+const waxRidgeMat=new THREE.MeshStandardMaterial({color:0xffe3b4,roughness:.72});
+for(let i=0;i<7;i++){const a=i*2.399,y=3.49-(i%3)*.06,length=.12+(i%3)*.055;const ridge=add(new THREE.CapsuleGeometry(.014,length,4,8),waxRidgeMat,Math.sin(a)*.109,y-length*.38,Math.cos(a)*.109);ridge.rotation.z=Math.sin(a)*.06;}
+const melt=add(new THREE.TorusGeometry(.065,.014,10,32),waxRidgeMat,0,3.59,0);melt.rotation.x=Math.PI/2;
+for(let i=0;i<4;i++){const a=i*1.7;const drip=add(new THREE.SphereGeometry(1,16,10),phys(0xffdfaa,.4,.02),Math.sin(a)*.105,3.53-(i%3)*.045,Math.cos(a)*.105);drip.scale.set(.024,.07+(i%2)*.035,.024);}
+add(new THREE.CylinderGeometry(.009,.009,.06,6),new THREE.MeshBasicMaterial({color:0x2a1a10}),0,3.65,0);
+flame=new THREE.Group();flame.position.set(0,3.63,0);cakeGroup.add(flame);
+const profile=[new THREE.Vector2(0,0),new THREE.Vector2(.04,.06),new THREE.Vector2(.095,.17),new THREE.Vector2(.16,.25),new THREE.Vector2(.13,.43),new THREE.Vector2(.055,.65),new THREE.Vector2(0,.83)];
+flameOuter=add(new THREE.LatheGeometry(profile,28),new THREE.MeshBasicMaterial({color:0xff7d20,transparent:true,opacity:.68,blending:THREE.AdditiveBlending,depthWrite:false}),0,0,0,flame);
+flameInner=add(new THREE.LatheGeometry(profile,20),new THREE.MeshBasicMaterial({color:0xfff1bf,transparent:true,opacity:.94}),0,0,.015,flame);flameInner.scale.set(.5,.7,.5);
+flickerMaterial(flameOuter.material);flickerMaterial(flameInner.material);
+const halo=new THREE.Sprite(new THREE.SpriteMaterial({map:soft,color:0xffc45e,transparent:true,opacity:.32,blending:THREE.AdditiveBlending,depthWrite:false}));halo.position.y=.4;halo.scale.set(1.45,1.8,1);flame.add(halo);flameHalo=halo;smokeTex=soft;
+flameLight=new THREE.PointLight(0xffd07a,20,8);flameLight.position.y=.45;flame.add(flameLight);
+// No glass globe: mixed candy and koi/whales swim around the cake.
+function shapeTex(painter){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');x.translate(64,64);x.fillStyle='#fff';x.strokeStyle='#fff';x.shadowColor='#fff';x.shadowBlur=5;painter(x);return new THREE.CanvasTexture(c)}
+const texDot=shapeTex(x=>{const g=x.createRadialGradient(0,0,0,0,0,56);g.addColorStop(0,'#fff');g.addColorStop(.66,'#fff');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.beginPath();x.arc(0,0,54,0,7);x.fill()});
+const texHeart=shapeTex(x=>{x.beginPath();x.moveTo(0,40);x.bezierCurveTo(-60,0,-46,-48,-4,-30);x.bezierCurveTo(40,-48,56,4,0,40);x.closePath();x.fill()});
+const texMoon=shapeTex(x=>{x.beginPath();x.arc(0,0,46,0,7);x.fill();x.globalCompositeOperation='destination-out';x.beginPath();x.arc(17,-10,40,0,7);x.fill();x.globalCompositeOperation='source-over'});
+const texFlower=shapeTex(x=>{for(let i=0;i<5;i++){const a=i*Math.PI*2/5;x.beginPath();x.ellipse(Math.cos(a)*26,Math.sin(a)*26,20,14,a,0,7);x.fill()}x.beginPath();x.arc(0,0,13,0,7);x.fill()});
+const starSprinkle=makeGlowTexture(true);
+const FLOAT_TEX=[starSprinkle,texDot,texHeart,texMoon,texFlower],FLOAT_COL=['#ffe14d','#8fe8ff','#ff7fb8','#b79bff','#8dffb0','#ffd7a1','#fff3c9'];
+orbitSparkles=[];
+for(let i=0;i<220;i++){let px=0,py=0,pz=0;for(let k=0;k<40;k++){const dx=Math.random()*2-1,dy=Math.random()*2-1,dz=Math.random()*2-1;const d=Math.hypot(dx,dy,dz)||1,dist=2.6+Math.random()*1.0;px=dx/d*dist;py=1.5+dy/d*dist;pz=dz/d*dist;if(!(Math.hypot(px,pz)<2.05&&py>.2&&py<3.0))break}
+py=Math.max(.85,py);const rad=Math.hypot(px,pz),a0=Math.atan2(px,pz),col=new THREE.Color(FLOAT_COL[i%FLOAT_COL.length]);
+const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:FLOAT_TEX[i%FLOAT_TEX.length],color:col,toneMapped:false,transparent:true,opacity:.72,blending:THREE.NormalBlending,depthWrite:false}));
+const size=i%12===0?.3:.09+Math.random()*.2;sp.scale.set(size,size,1);sp.position.set(px,py,pz);sp.userData={a0,rad,y:py,spd:.05+Math.random()*.12,seed:Math.random()*6.283};scene.add(sp);orbitSparkles.push(sp)}
+bokehSprites=[];for(let i=0;i<26;i++){const a=Math.random()*6.283,r=3.15+Math.random()*2.3,y=.3+Math.random()*4.4,base=.1+Math.random()*.16;const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:soft,color:new THREE.Color(FLOAT_COL[i%FLOAT_COL.length]).lerp(new THREE.Color(0xffffff),.25),transparent:true,opacity:base,blending:THREE.AdditiveBlending,depthWrite:false}));const sc=.3+Math.random()*.7;sp.scale.set(sc,sc,1);sp.position.set(Math.cos(a)*r,y,Math.sin(a)*r);sp.userData={y,base,seed:Math.random()*6.283};scene.add(sp);bokehSprites.push(sp)}
+particles=new THREE.Group();scene.add(particles);for(let layer=0;layer<2;layer++){const ps=[],cs=[],count=layer===0?260:120;for(let i=0;i<count;i++){const dx=Math.random()*2-1,dy=Math.random()*2-1,dz=Math.random()*2-1;const d=Math.hypot(dx,dy,dz)||1,dist=1.9+Math.random()*.75,px=dx/d*dist,py=Math.max(.85,2.3+dy/d*dist),pz=dz/d*dist;ps.push(px,py,pz);const c=new THREE.Color(FLOAT_COL[i%FLOAT_COL.length]);cs.push(c.r,c.g,c.b)}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(ps,3));g.setAttribute('color',new THREE.Float32BufferAttribute(cs,3));particles.add(new THREE.Points(g,new THREE.PointsMaterial({map:glow,size:layer?.07:.04,vertexColors:true,transparent:true,opacity:layer?.5:.7,blending:THREE.AdditiveBlending,depthWrite:false})))}
+livingCake=createLivingCake(scene,camera,cakeGroup,cakeMat);
+decorGroup=new THREE.Group();cakeGroup.add(decorGroup);
+document.fonts?.ready.then(()=>{drawCakeSide(side.c);side.tex.needsUpdate=true}).catch(()=>{});
+initCakeBloom();resizeCake();animate()}catch(e){console.error('3D cake unavailable',e);$('#cake-fallback').hidden=false}}
+function updateDecor(){if(!decorGroup)return;while(decorGroup.children.length){const c=decorGroup.children[0];decorGroup.remove(c);c.geometry?.dispose();c.material?.dispose()}const shapes=['heart','pearl','moon','star'];const cols={heart:0xff75b0,pearl:0xffffff,moon:0xfff0b8,star:0xffd65c};for(let i=0;i<24;i++){const a=i*Math.PI*2/24,kind=shapes[i%4];let g;if(kind==='heart'){const sh=new THREE.Shape();sh.moveTo(0,-.16);sh.bezierCurveTo(-.3,-.02,-.24,.22,0,.12);sh.bezierCurveTo(.24,.22,.3,-.02,0,-.16);g=new THREE.ExtrudeGeometry(sh,{depth:.03,bevelEnabled:false})}else if(kind==='moon'){g=new THREE.TorusGeometry(.08,.03,8,16,Math.PI*1.35)}else if(kind==='pearl'){g=new THREE.SphereGeometry(.045,12,8)}else{g=new THREE.OctahedronGeometry(.06)}const m=new THREE.MeshStandardMaterial({color:cols[kind],emissive:cols[kind],emissiveIntensity:.25,roughness:.3,metalness:.1});const o=new THREE.Mesh(g,m);o.position.set(Math.cos(a)*1.74,2.84+.14*(1-Math.pow(1.74/1.9,2)),Math.sin(a)*1.74);if(kind==='heart'||kind==='star')o.rotation.set(-Math.PI/2,0,a);decorGroup.add(o)}}
+// A screen-space glow pass spreads bright candle, star and plate highlights into soft halos.
+function initCakeBloom(){if(typeof renderer.setRenderTarget!=='function')return;bloomTarget=new THREE.WebGLRenderTarget(1,1,{type:THREE.HalfFloatType});bloomScene=new THREE.Scene();bloomCamera=new THREE.OrthographicCamera(-1,1,1,-1,0,1);bloomMaterial=new THREE.ShaderMaterial({transparent:true,depthTest:false,depthWrite:false,uniforms:{image:{value:bloomTarget.texture},texel:{value:new THREE.Vector2(1,1)}},vertexShader:'varying vec2 uvPos;void main(){uvPos=uv;gl_Position=vec4(position.xy,0.,1.);}',fragmentShader:`uniform sampler2D image;uniform vec2 texel;varying vec2 uvPos;vec3 bright(vec2 p){vec3 c=min(texture2D(image,p).rgb,vec3(2.4));float l=max(c.r,max(c.g,c.b));return c*smoothstep(.66,1.25,l);}void main(){vec4 base=texture2D(image,uvPos);vec3 halo=vec3(0.);for(int i=0;i<28;i++){float angle=float(i)*.224399;vec2 dir=vec2(cos(angle),sin(angle));halo+=bright(uvPos+dir*texel*6.)*.008;halo+=bright(uvPos+dir*texel*14.)*.006;halo+=bright(uvPos+dir*texel*27.)*.004;}halo*=.95;gl_FragColor=vec4(base.rgb+halo*.55,max(base.a,clamp(max(halo.r,max(halo.g,halo.b))*.75,0.,.75)));
+#include <tonemapping_fragment>
+#include <colorspace_fragment>
+}`});bloomScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),bloomMaterial))}
+function resizeCake(){if(!renderer)return;const w=cakeCanvas.clientWidth,h=cakeCanvas.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;const portrait=w/h<.8;camera.position.set(0,portrait?7.4:6.8,portrait?19.9:12.2);camera.lookAt(0,portrait?2.35:2.2,0);camera.updateProjectionMatrix();livingCake?.layout();if(bloomTarget){const d=Math.min(devicePixelRatio||1,2);bloomTarget.setSize(Math.round(w*d),Math.round(h*d));bloomMaterial.uniforms.texel.value.set(1/(w*d),1/(h*d))}}
+function renderCake(){if(bloomTarget){renderer.setRenderTarget(bloomTarget);renderer.clear();renderer.render(scene,camera);renderer.setRenderTarget(null);renderer.clear();renderer.render(bloomScene,bloomCamera)}else renderer.render(scene,camera)}
 // Celebration: two party cannons fire from the lower corners, then a long firework show with confetti.
 const celebration=$('#confetti-canvas'),cc=celebration.getContext('2d');
-let stream=[],rockets=[],sparks=[],flakes=[],smoke=[],popperFlash=0,showStart=0,launchPlan=[],launchedCount=0,lastDraw=0,celebrationFrame;
+let stream=[],rockets=[],sparks=[],flakes=[],smoke=[],popperFlash=0,showStart=0,launchPlan=[],launchedCount=0,cannonGrad=null,lastDraw=0;
 const FIRE_COLORS=['#ffd86b','#ff8fb8','#b79bff','#8fe3ff','#fff3c9','#ff6b6b','#8dffb0','#ffb066'];
-function sizeCelebration(){const d=1,r=celebration.getBoundingClientRect();celebration.width=Math.max(1,Math.round(r.width*d));celebration.height=Math.max(1,Math.round(r.height*d));cc.setTransform(d,0,0,d,0,0)}
+function sizeCelebration(){const d=Math.min(devicePixelRatio||1,1.5),r=celebration.getBoundingClientRect();celebration.width=Math.max(1,Math.round(r.width*d));celebration.height=Math.max(1,Math.round(r.height*d));cc.setTransform(d,0,0,d,0,0);cannonGrad=null}
 function makeFlake(w,h,initial){return{x:Math.random()*w,y:initial?Math.random()*h*.45:-20-Math.random()*h*.25,vx:(Math.random()-.5)*.9,vy:initial?.7+Math.random()*1.2:.9+Math.random()*1.3,sway:Math.random()*6.283,swaySpeed:.5+Math.random()*1.1,size:3.4+Math.random()*7,rot:Math.random()*6.283,spin:(Math.random()-.5)*.16,shape:Math.random()<.32?'star':(Math.random()<.58?'ribbon':'rect'),color:FIRE_COLORS[(Math.random()*FIRE_COLORS.length)|0]}}
-function burst(){sizeCelebration();const w=celebration.clientWidth,h=celebration.clientHeight;stream.length=0;rockets.length=0;sparks.length=0;flakes.length=0;smoke.length=0;showStart=performance.now();cake?.fire(showStart);popperFlash=showStart;lastDraw=0;launchPlan=[];launchedCount=0;for(const side of [-1,1]){const tip=cake?.tip(side,w,h),x=tip?.x??(side<0?w*.1:w*.9),y=tip?.y??h*.93;for(let i=0;i<125;i++){const ang=(side<0?-1.0:-2.14)+(Math.random()-.5)*.75,sp=7+Math.random()*13;stream.push({x,y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,g:.3,age:0,life:70+Math.random()*70,size:3+Math.random()*6,spin:(Math.random()-.5)*.45,angle:Math.random()*6.283,shape:Math.random()<.34?'star':(Math.random()<.55?'ribbon':'rect'),color:FIRE_COLORS[(Math.random()*FIRE_COLORS.length)|0]})}smoke.push({x,y,r:34+Math.random()*18,age:0,life:42})}for(let i=0;i<105;i++)flakes.push(makeFlake(w,h,true));for(let i=0;i<20;i++)launchPlan.push(350+i*700+Math.random()*110);const cx=w*.5,cy=h*.42;for(let i=0;i<50;i++){const a=Math.random()*6.283,sp=.6+Math.random()*3;sparks.push({x:cx,y:cy,px:cx,py:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-1.1,g:.02,drag:.97,color:Math.random()<.5?'#fff3c9':'#ffe08a',life:55+Math.random()*35,size:1+Math.random()*1.6,glint:true})}celebrationFrame=requestAnimationFrame(drawCelebration)}
+function burst(){sizeCelebration();const w=celebration.clientWidth,h=celebration.clientHeight;stream.length=0;rockets.length=0;sparks.length=0;flakes.length=0;smoke.length=0;showStart=performance.now();livingCake?.fire(showStart);popperFlash=showStart;lastDraw=0;celebration._cleared=false;launchPlan=[];launchedCount=0;for(const side of [-1,1]){const tip=livingCake?.tip(side,w,h),x=tip?.x??(side<0?w*.1:w*.9),y=tip?.y??h*.93;for(let i=0;i<360;i++){const ang=(side<0?-1.0:-2.14)+(Math.random()-.5)*.75,sp=7+Math.random()*13;stream.push({x,y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,g:.3,age:0,life:70+Math.random()*70,size:3+Math.random()*6,spin:(Math.random()-.5)*.45,angle:Math.random()*6.283,shape:Math.random()<.34?'star':(Math.random()<.55?'ribbon':'rect'),color:FIRE_COLORS[(Math.random()*FIRE_COLORS.length)|0]})}smoke.push({x,y,r:34+Math.random()*18,age:0,life:42})}for(let i=0;i<260;i++)flakes.push(makeFlake(w,h,true));for(let i=0;i<36;i++)launchPlan.push(350+i*390+Math.random()*110);const cx=w*.5,cy=h*.42;for(let i=0;i<50;i++){const a=Math.random()*6.283,sp=.6+Math.random()*3;sparks.push({x:cx,y:cy,px:cx,py:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-1.1,g:.02,drag:.97,color:Math.random()<.5?'#fff3c9':'#ffe08a',life:55+Math.random()*35,size:1+Math.random()*1.6,glint:true})}}
 function launchFirework(index,w,h){const side=index%2===0?-1:1;rockets.push({x:side<0?w*.18:w*.82,y:h*.93,fromX:side<0?w*.18:w*.82,fromY:h*.93,targetX:w*(.16+Math.random()*.68),targetY:h*(.1+Math.random()*.26),progress:0,style:index%4,color:FIRE_COLORS[index%FIRE_COLORS.length]})}
-function explode(r){if(sparks.length>=420)return;const push=(a,sp,life,color,g,drag,size)=>{sparks.push({x:r.x,y:r.y,px:r.x,py:r.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,g,drag,color,life,size})};const style=r.style;
- if(style===1){for(let ring=0;ring<2;ring++){const n=ring?56:38,sp0=ring?1.2:2.5,life=ring?80:60;for(let i=0;i<n;i++){const a=i/n*Math.PI*2+ring*.4;if(sparks.length>=420)break;push(a,sp0*(.8+Math.random()*.5),life+Math.random()*20,ring?r.color:'#fff3c9',.03,.975,1+Math.random()*1.4)}}
- }else if(style===2){for(let i=0;i<72;i++){if(sparks.length>=420)break;const a=i/72*Math.PI*2+Math.random()*.1;push(a,1.4+Math.random()*2.2,100+Math.random()*45,r.color,.02,.985,1+Math.random()*1.5)}
- }else if(style===3){for(let arm=0;arm<6;arm++){const base=arm/6*Math.PI*2;for(let i=0;i<14;i++){if(sparks.length>=420)break;push(base+(Math.random()-.5)*.16,1.6+Math.random()*2.4,70+Math.random()*30,i===0?'#fff3c9':r.color,.03,.974,1+Math.random()*1.6)}}
- }else{for(let i=0;i<74;i++){if(sparks.length>=420)break;const a=i/74*Math.PI*2+(Math.random()-.5)*.08;push(a,1.3+Math.random()*2.5,60+Math.random()*40,r.color,.03,.975,1+Math.random()*1.8)}}
- for(let i=0;i<14;i++){if(sparks.length>=420)break;push(Math.random()*6.283,3+Math.random()*4,80+Math.random()*35,'#fff6d8',.06,.965,1.2)}}
+function explode(r){if(sparks.length>1800)return;const push=(a,sp,life,color,g,drag,size)=>{sparks.push({x:r.x,y:r.y,px:r.x,py:r.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,g,drag,color,life,size})};const style=r.style;
+ if(style===1){for(let ring=0;ring<2;ring++){const n=ring?56:38,sp0=ring?1.2:2.5,life=ring?80:60;for(let i=0;i<n;i++){const a=i/n*Math.PI*2+ring*.4;if(sparks.length>1800)break;push(a,sp0*(.8+Math.random()*.5),life+Math.random()*20,ring?r.color:'#fff3c9',.03,.975,1+Math.random()*1.4)}}
+ }else if(style===2){for(let i=0;i<72;i++){if(sparks.length>1800)break;const a=i/72*Math.PI*2+Math.random()*.1;push(a,1.4+Math.random()*2.2,100+Math.random()*45,r.color,.02,.985,1+Math.random()*1.5)}
+ }else if(style===3){for(let arm=0;arm<6;arm++){const base=arm/6*Math.PI*2;for(let i=0;i<14;i++){if(sparks.length>1800)break;push(base+(Math.random()-.5)*.16,1.6+Math.random()*2.4,70+Math.random()*30,i===0?'#fff3c9':r.color,.03,.974,1+Math.random()*1.6)}}
+ }else{for(let i=0;i<74;i++){if(sparks.length>1800)break;const a=i/74*Math.PI*2+(Math.random()-.5)*.08;push(a,1.3+Math.random()*2.5,60+Math.random()*40,r.color,.03,.975,1+Math.random()*1.8)}}
+ for(let i=0;i<14;i++){if(sparks.length>1850)break;push(Math.random()*6.283,3+Math.random()*4,80+Math.random()*35,'#fff6d8',.06,.965,1.2)}}
 function drawShape(shape,size,color,alpha){cc.globalAlpha=alpha;cc.fillStyle=color;if(shape==='star'){cc.beginPath();for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,rr=i%2?size*.42:size;const px=Math.cos(a)*rr,py=Math.sin(a)*rr;i?cc.lineTo(px,py):cc.moveTo(px,py)}cc.closePath();cc.fill()}else if(shape==='ribbon'){cc.fillRect(-size*.26,-size*1.7,size*.52,size*3.4)}else{cc.fillRect(-size/2,-size/2,size,size)}}
-function clearCelebration() {
-  clearTimeout(fireTimer);
-  if (celebrationFrame === undefined) return;
-  cancelAnimationFrame(celebrationFrame);
-  celebrationFrame = undefined;
-  cc.clearRect(0, 0, celebration.width, celebration.height);
-  stream.length = rockets.length = sparks.length = flakes.length = smoke.length = 0;
-  showStart = popperFlash = 0;
-}
-function drawCelebration(now) {
-  if (!showStart && !stream.length && !rockets.length && !sparks.length && !flakes.length && !smoke.length) {
-    clearCelebration();
-    return;
-  }
-  celebrationFrame = requestAnimationFrame(drawCelebration);
-  if (lastDraw && now - lastDraw < 33) return;
-  const w = celebration.width, h = celebration.height;
-  const dt = Math.min(.2, Math.max(.004, (now - (lastDraw || now - 16)) / 1000));
-  lastDraw = now;
- cc.clearRect(0,0,w,h);const f=dt*60;
+function drawCelebration(now){const w=celebration.clientWidth,h=celebration.clientHeight;const dt=Math.min(.2,Math.max(.004,(now-lastDraw)/1000||.016));lastDraw=now;const any=showStart||stream.length||rockets.length||sparks.length||flakes.length||smoke.length||popperFlash;
+ if(current!==3||document.hidden){if(any){cc.clearRect(0,0,w,h);stream.length=0;rockets.length=0;sparks.length=0;flakes.length=0;smoke.length=0;showStart=0;popperFlash=0}requestAnimationFrame(drawCelebration);return}
+ if(!any){if(!celebration._cleared){cc.clearRect(0,0,w,h);celebration._cleared=true}requestAnimationFrame(drawCelebration);return}
+ celebration._cleared=false;cc.clearRect(0,0,w,h);const f=dt*60;
  if(showStart){const elapsed=now-showStart;while(launchedCount<launchPlan.length&&elapsed>=launchPlan[launchedCount]){launchFirework(launchedCount,w,h);launchedCount++}if(elapsed>15500)showStart=0}
  for(let i=smoke.length-1;i>=0;i--){const s=smoke[i];s.age+=f;const p=s.age/s.life;if(p>=1){smoke.splice(i,1);continue}cc.save();cc.globalAlpha=(1-p)*.4;cc.fillStyle='#dde5f4';cc.beginPath();cc.arc(s.x,s.y,s.r*(.4+p*1.4),0,7);cc.fill();cc.restore()}
  for(let i=rockets.length-1;i>=0;i--){const r=rockets[i],px=r.x,py=r.y;r.progress=Math.min(1,r.progress+dt*1.2);const q=1-Math.pow(1-r.progress,2);r.x=r.fromX+(r.targetX-r.fromX)*q;r.y=r.fromY+(r.targetY-r.fromY)*q;cc.save();cc.globalCompositeOperation='lighter';cc.strokeStyle=r.color;cc.globalAlpha=.9;cc.lineWidth=2;cc.beginPath();cc.moveTo(px,py);cc.lineTo(r.x,r.y);cc.stroke();cc.restore();if(r.progress>=1){explode(r);rockets.splice(i,1)}}
@@ -205,32 +217,9 @@ function drawCelebration(now) {
  for(let i=sparks.length-1;i>=0;i--){const p=sparks[i];p.px=p.x;p.py=p.y;p.x+=p.vx*f;p.y+=p.vy*f;p.vx*=Math.pow(p.drag,f);p.vy=p.vy*Math.pow(p.drag,f)+p.g*f;p.life-=f;cc.save();cc.globalAlpha=Math.min(1,p.life/24)*.9;cc.strokeStyle=p.color;cc.lineWidth=p.size;cc.beginPath();cc.moveTo(p.px,p.py);cc.lineTo(p.x,p.y);cc.stroke();cc.restore();if(p.life<=0)sparks.splice(i,1)}
  cc.globalCompositeOperation='source-over';
  for(let i=stream.length-1;i>=0;i--){const p=stream[i];p.x+=p.vx*f;p.y+=p.vy*f;p.vy+=p.g*f;p.vx*=.998;p.angle+=p.spin*f;p.age+=f;const k=p.age/p.life;cc.save();cc.translate(p.x,p.y);cc.rotate(p.angle);drawShape(p.shape,p.size,p.color,Math.max(0,1-k));cc.restore();if(k>=1||p.y>h+30)stream.splice(i,1)}
- for(let i=flakes.length-1;i>=0;i--){const fl=flakes[i];fl.sway+=fl.swaySpeed*.05*f;fl.x+=fl.vx*f+Math.sin(fl.sway)*1.1*f;fl.y+=fl.vy*f;fl.rot+=fl.spin*f;fl.vy=Math.min(4.4,fl.vy+.014*f);cc.save();cc.translate(fl.x,fl.y);cc.rotate(fl.rot);drawShape(fl.shape,fl.size,fl.color,.92);cc.restore();if(fl.y>h+40){flakes.splice(i,1);if(showStart&&flakes.length<105)flakes.push(makeFlake(w,h,false))}}
-}
-window.addEventListener('resize', () => { if (celebrationFrame !== undefined) sizeCelebration(); });
-
-function relight() {
-  stopCakeCheer();
-  clearCelebration();
-  cake?.reset();
-  blowAt = 0;
-  $('.cake-scene').classList.remove('is-blown');
-  $('#blow').hidden = false;
-  $('#next-final').hidden = true;
-  $('#cake-result').textContent = '';
-  $('#cake-plaque').style.visibility = '';
-}
-$('#blow').onclick = () => {
-  if (blowAt) return;
-  blowAt = performance.now();
-  $('.cake-scene').classList.add('is-blown');
-  playCakeCheer();
-  cake?.blow(blowAt);
-  if (!reducedMotion?.matches) fireTimer = setTimeout(burst, 1530);
-  $('#blow').hidden = true;
-  $('#cake-result').textContent = ($('#cake-plaque').textContent || '萌萌，19岁生日快乐') + ' ✨ 愿你的每个愿望都闪闪发光。';
-  $('#next-final').hidden = false;
-  $('#cake-plaque').style.visibility = 'hidden';
-};
-$('#next-final').onclick = () => go(4);
-go(0);
+ for(let i=flakes.length-1;i>=0;i--){const fl=flakes[i];fl.sway+=fl.swaySpeed*.05*f;fl.x+=fl.vx*f+Math.sin(fl.sway)*1.1*f;fl.y+=fl.vy*f;fl.rot+=fl.spin*f;fl.vy=Math.min(4.4,fl.vy+.014*f);cc.save();cc.translate(fl.x,fl.y);cc.rotate(fl.rot);drawShape(fl.shape,fl.size,fl.color,.92);cc.restore();if(fl.y>h+40){flakes.splice(i,1);if(showStart&&flakes.length<260)flakes.push(makeFlake(w,h,false))}}
+ requestAnimationFrame(drawCelebration)}
+sizeCelebration();window.addEventListener('resize',sizeCelebration);requestAnimationFrame(drawCelebration);
+function spawnPoof(){if(!cakeGroup||!smokeTex)return;const s=new THREE.Sprite(new THREE.SpriteMaterial({map:smokeTex,color:0xf4f7ff,transparent:true,opacity:.55,blending:THREE.NormalBlending,depthWrite:false}));s.position.set(0,3.55,0);s.scale.setScalar(.3);s.userData={poof:true,vx:0,vy:.25,vz:0,age:0,life:.55,size:.3,base:.55};cakeGroup.add(s);smokePuffs.push(s)}function spawnSmoke(){if(!cakeGroup||!smokeTex)return;const a=Math.random()*6.283,s=new THREE.Sprite(new THREE.SpriteMaterial({map:smokeTex,color:0xcfd6e8,transparent:true,opacity:.42,blending:THREE.NormalBlending,depthWrite:false}));s.position.set(Math.cos(a)*.05,3.55+Math.random()*.1,Math.sin(a)*.05);const size=.2+Math.random()*.14;s.scale.setScalar(size);s.userData={vx:Math.cos(a)*.06,vy:.32+Math.random()*.38,vz:Math.sin(a)*.06,age:0,life:1.9+Math.random()*.9,size,base:.58+Math.random()*.22};cakeGroup.add(s);smokePuffs.push(s)}
+function animate(){requestAnimationFrame(animate);if(!renderer)return;const t=clock.getElapsedTime(),now=performance.now(),dt=Math.min(.05,(now-(lastNow||now))/1000);lastNow=now;if(flameOuter?.material.userData.flameTime)flameOuter.material.userData.flameTime.value=t;if(flameInner?.material.userData.flameTime)flameInner.material.userData.flameTime.value=t;livingCake?.update(t,now);if(current===3){if(!cakeWasOn){cakeWasOn=true;cakeEnterT=t}}else cakeWasOn=false;cakeGroup.rotation.y=-.45+(current===3?(t-cakeEnterT):0)*.055;orbitSparkles.forEach(s=>{const d=s.userData,a=d.a0+t*d.spd;s.position.set(Math.sin(a)*d.rad,d.y+Math.sin(t*.9+d.seed)*.05,Math.cos(a)*d.rad);s.material.opacity=.4+.5*(.5+.5*Math.sin(t*2.2+d.seed))});swimmers.forEach(s=>{const d=s.userData,a=d.phase+t*d.spd*6.283;s.position.set(Math.sin(a)*d.rad,d.y+Math.sin(t*.7+d.bob)*.14,Math.cos(a)*d.rad);s.material.rotation=Math.cos(a)>=0?-.08:Math.PI+.08});bokehSprites.forEach(s=>{const d=s.userData;s.position.y=d.y+Math.sin(t*.35+d.seed)*.14;s.material.opacity=d.base*(.7+.3*Math.sin(t*.7+d.seed))});particles.rotation.y=-t*.035;particles.children.forEach((layer,i)=>{layer.rotation.y=t*(.012+i*.012);layer.position.y=Math.sin(t*.32+i)*.1});if(flame){if(blowStart){const p=Math.min(1,(now-blowStart)/1700),f=1-p,flick=.55+.45*Math.sin(t*38)*Math.sin(p*Math.PI);flameOuter.material.opacity=.68*f*(.6+.4*flick);flameInner.material.opacity=.94*f;if(flameHalo)flameHalo.material.opacity=.32*f;flameLight.intensity=20*f;flameOuter.scale.set(1.14*(1-.3*p),1-.4*p,1.14*(1-.3*p));if(p>.24&&p<.96&&Math.random()<1.3)spawnSmoke();if(p>=1){flame.visible=false;blowStart=0}if(!blowFired&&p>.9){blowFired=true;burst()}}else if(flame.visible){flameOuter.scale.set(1.14+Math.sin(t*8)*.04,1+Math.sin(t*11)*.04,1.14);flameInner.scale.y=.7+Math.sin(t*10)*.025;flame.rotation.z=Math.sin(t*3.8)*.06+Math.sin(t*9)*.025;flame.rotation.x=Math.sin(t*5)*.035;flameLight.intensity=20+Math.sin(t*11)*3}}for(let i=smokePuffs.length-1;i>=0;i--){const s=smokePuffs[i],d=s.userData;d.age+=dt;s.position.x+=d.vx*dt;s.position.y+=d.vy*dt;s.position.z+=d.vz*dt;d.vy*=.985;const k=d.age/d.life;s.scale.setScalar(d.poof?(.3+k*2.8):d.size*(1+k*2.4));s.material.opacity=d.base*(1-k);if(k>=1){cakeGroup.remove(s);s.material.dispose();smokePuffs.splice(i,1)}}if(plateGlow)plateGlow.material.opacity=.32+.07*Math.sin(t*1.4);for(let i=confetti.length-1;i>=0;i--){const o=confetti[i];o.position.add(o.userData.v);o.userData.v.y-=.0015;o.rotation.x+=.06;o.rotation.z+=.04;if(o.position.y< -2){scene.remove(o);o.geometry.dispose();o.material.dispose();confetti.splice(i,1)}}if(current===3)renderCake()}
+function relight(){stopCakeCheer();$('#blow').hidden=false;livingCake?.reset();blown=false;blowStart=0;blowFired=false;popperFlash=0;showStart=0;launchedCount=0;stream.length=0;rockets.length=0;sparks.length=0;flakes.length=0;smoke.length=0;if(flame){flame.visible=true;flameOuter.material.opacity=.68;flameInner.material.opacity=.94;if(flameHalo)flameHalo.material.opacity=.32;flameOuter.scale.set(1.14,1,1.14);flameLight.intensity=20}for(const s of smokePuffs){cakeGroup.remove(s);s.material.dispose()}smokePuffs.length=0;$('#realistic-stage').classList.remove('extinguished');$('#cake-result').textContent='';$('#next-final').hidden=true;$('#cake-plaque').style.visibility=''}$('#blow').onclick=()=>{if(!blown){playCakeCheer();$('#blow').hidden=true;blown=true;blowStart=performance.now();livingCake?.start(blowStart);blowFired=false;popperFlash=0;spawnPoof();$('#realistic-stage').classList.add('extinguished')}$('#cake-result').textContent=($('#cake-plaque').textContent||'萌萌，19岁生日快乐')+' ✨ 愿你的每个愿望都闪闪发光。';$('#next-final').hidden=false;$('#cake-plaque').style.visibility='hidden'};$('#next-final').onclick=()=>go(4);window.addEventListener('resize',resizeCake);go(0);initCake();
